@@ -1,0 +1,27 @@
+variable "operators_list" {
+  description = "This is a list that is fed to build local users in the VMs. This uses the username / ssh key pairing to fill out the cloud-init templates"
+  type        = map(any)
+  default = { {% for OPERATOR in OPERATORS_LIST %}{% for key,value in OPERATOR.items() %}
+    "{{ key }}" = "{{ value }}"{% endfor %}{% endfor %}
+  }
+}
+
+variable "operators_ips" {
+  description = "The IP Addresses that are allowed to SSH into the host"
+  type = list
+  default = [ 
+    "{{ OPERATOR_IPS }}",
+    ]
+}
+
+variable "aws_region" {
+  description = "This the default region for aws"
+  type = string
+  default = "{{ AWS_REGION }}"
+}
+
+variable "node_nums" {
+  description = "The number of exit nodes"
+  type = number
+  default = 1
+}
