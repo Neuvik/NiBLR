@@ -4,6 +4,8 @@ import argparse
 import os.path
 import logging
 import csv
+import ansible_runner 
+import time
 
 from python_terraform import *
 from jinja2 import Environment, FileSystemLoader
@@ -55,7 +57,6 @@ def generate_variables(args):
     file_loader = FileSystemLoader(TEMPLATE_DIRECTORY)
     env = Environment(loader=file_loader)
 
-    #operators_list = [{"moses" : "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPyOdTJ3mXw4X0XRSGxlrllvUw1chX4uk1FPerUcJtEo+RSKR1OIRFoXwohk3D+7jfY+6FS6qd+QfKYWg0A7HqU= moses"},{"dave" : "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuzkP1XqapzbnQSMbjNJB5LUrId4/pYbUwDHwcHo4z dmay3r"}]
     operators_dictionary = {}
     operators_list = []
     
@@ -121,12 +122,44 @@ def main():
     generate_variables(args)
 
     #os.system("cd terraform; terraform apply -auto-approve")
-    logging.info(f"[+] Running terraform fmt")
-    print(f"[+] Running terraform fmt")
-    tf = Terraform(working_dir='./terraform')
-    fmt = tf.fmt(diff=True)
+    try:
+        tf = Terraform(working_dir='./terraform')
+        print(f"[+] Running terraform fmt")
+        return_code, stdout, stderr = tf.fmt(diff=True)
+        logging.info(f"[+] Ran terraform fmt and returned {return_code}")
+        
+        print(f"[+] Running terraform apply")
+        return_code, stdout, stderr = tf.apply(no_color=IsFlagged,input=False,auto_approve=True)
+        logging.info(f"[+] Ran terraform apply and returned {return_code}")
 
-    os.system("cd terraform; terraform output -raw client_conf > ../openvpn_client.conf")
+        os.system("cd terraform; terraform output -raw client_conf > ../openvpn_client.conf")
+
+    except Exception as e:
+        logging.info(e)
+
+    print(f"""
+[-] We now have the system built but it will take a few minutes for this system to be available and for ansible to control it.
+[-] Let's use a countdown timer for 5 minutes to fix this.
+""")
+    
+    t = 1
+    while t:
+        mins, secs = divmod(t, 60)
+        timer = '{:02d}:{:02d}'.format(mins, secs)
+        print(timer, end="\r")
+        time.sleep(1)
+        t -= 1
+
+    try:
+        ansiblerun = ansible_runner.run(private_data_dir='./ansible', playbook='playbook.yml')
+        print(f"Running ansible now, the status is: {ansiblerun.status}: {ansiblerun.rc}")
+        logging.info(f"Running ansible now, the status is: {ansiblerun.status}: {ansiblerun.rc}")
+
+    except Exception as e:
+        logging.info(e)
+
+
+
 if __name__ == "__main__":
     try:
         print(f"""

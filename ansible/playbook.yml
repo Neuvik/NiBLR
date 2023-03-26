@@ -3,14 +3,6 @@
   become: yes
   roles:
     - openvpn_server
-  vars_files:
-    - vars/vars.yml
-    - vars/users.yml
-    
-- hosts: victim1
-  become: yes
-  roles:
-    - victim1
-  vars_files:
-    - vars/vars.yml
-    - vars/users.yml%
+  #vars_files:
+    #- vars/vars.yml
+    #- vars/users.yml

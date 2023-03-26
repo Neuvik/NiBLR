@@ -61,22 +61,34 @@ if [ "$OS" == "Darwin" ]; then
   export REAL_PKI=/usr/local/etc/pki
 fi
 
+### Initial Copies are just for Backup Purposes
+
 $EASYRSA_CMD --batch init-pki
 $EASYRSA_CMD --batch build-ca nopass
 $EASYRSA_CMD --batch gen-req server nopass
 $EASYRSA_CMD --batch sign-req server server
-mkdir -p ./server-configs/keys
-mkdir -p ./client-configs/keys
-openvpn --genkey secret ta.key
-/usr/bin/openssl dhparam -out dh2048.pem 2048
-cp -v $REAL_PKI/private/server.key ./server-configs/keys/
-cp -v $REAL_PKI/issued/server.crt $REAL_PKI/ca.crt ./server-configs/keys/
-cp -v ./ta.key $REAL_PKI/ca.crt ./server-configs/keys/
-cp -v ./dh2048.pem ./server-configs/keys/
+mkdir -p $RSADIR/server-configs/keys
+mkdir -p $RSADIR/client-configs/keys
+openvpn --genkey secret $RSADIR/ta.key
+/usr/bin/openssl dhparam -out $RSADIR/dh2048.pem 2048
+cp -v $REAL_PKI/private/server.key $RSADIR/server-configs/keys/
+cp -v $REAL_PKI/issued/server.crt $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+cp -v $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+cp -v $REAL_PKI/ca.crt $RSADIR/client-configs/keys/
+cp -v $RSADIR/ta.key $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+cp -v $RSADIR/dh2048.pem $RSADIR/server-configs/keys/
 $EASYRSA_CMD --batch gen-req client1 nopass
 $EASYRSA_CMD --batch sign-req client client1
-cp -v $REAL_PKI/private/client1.key ./client-configs/keys/
-cp -v $REAL_PKI/issued/client1.crt ./client-configs/keys/
+cp -v $REAL_PKI/private/client1.key $RSADIR/client-configs/keys/
+cp -v $REAL_PKI/issued/client1.crt $RSADIR/client-configs/keys/
+
+### Getting ready for Ansible 
+
+cp -v $REAL_PKI/private/* $CURDIR/ansible/roles/openvpn_server/files/
+cp -v $REAL_PKI/issued/* $CURDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/server-configs/keys/ $CUDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/client-configs/keys/*.crt $CUDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/client-configs/keys/*.key $CUDIR/ansible/roles/openvpn_server/files/
 
 #cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf /etc/openvpn/server/
 #sed -i 's/tls-auth ta.key 0/;tls-auth ta.key 0\ntls-crypt ta.key/g' /etc/openvpn/server/server.conf

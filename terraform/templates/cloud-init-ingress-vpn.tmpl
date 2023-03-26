@@ -58,6 +58,7 @@ users:
     shell: /bin/bash
     ssh_authorized_keys:
     - ${ansible_key}
+    sudo: ALL=(ALL) NOPASSWD:ALL
  %{ for operators_key, operators_value in operators ~}
  - name: ${operators_key}
     lock_passwd: true

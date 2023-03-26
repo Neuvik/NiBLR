@@ -18,16 +18,15 @@ EOF
 }
 
 resource "local_file" "aws_ingress_vpn" {
-  content = templatefile("${path.module}/templates/inventory.tmpl",
-    {
-      cat      = "aws-ingress-vpn",
-      ip_addrs = [aws_instance.aws_ingress_vpn.public_ip]
-      vars = [
-        "ansible_user: ubuntu",
-        "ansible_python_interpreter: /usr/bin/python3",
-        "ansible_ssh_private_key_file: ~/.ssh/id_rsa"
-      ]
+  content = templatefile("${path.module}/templates/inventory.tmpl", {
+    cat      = "aws-ingress-vpn",
+    ip_addrs = [aws_instance.aws_ingress_vpn.public_ip],
+    vars = [
+      "ansible_user: ansible",
+      "ansible_python_interpreter: /usr/bin/python3",
+      "ansible_ssh_private_key_file: ~/.ssh/id_rsa"
+    ]
     }
   )
-  filename = "../ansible/inventory/aws-ingress-vpn.yml"
+  filename = "${path.module}/../ansible/inventory/aws-ingress-vpn.yml"
 }
