@@ -142,7 +142,7 @@ def main():
 [-] Let's use a countdown timer for 5 minutes to fix this.
 """)
     
-    t = 1
+    t = 300
     while t:
         mins, secs = divmod(t, 60)
         timer = '{:02d}:{:02d}'.format(mins, secs)

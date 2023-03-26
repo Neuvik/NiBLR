@@ -7,7 +7,7 @@ resource "local_file" "cloud_init_ingress_vpn_template" {
   filename = "${path.module}/files/cloud-init-ingress-vpn.yaml"
 }
 
-data "local_file" "cloud_init_bastion_yaml" {
+data "local_file" "cloud_init_ingress_vpn_yaml" {
   filename   = local_file.cloud_init_ingress_vpn_template.filename
   depends_on = [local_file.cloud_init_ingress_vpn_template]
 }
@@ -26,7 +26,7 @@ resource "aws_instance" "aws_ingress_vpn" {
     volume_size = 50 # This is options, 50GB hard disk may be rather large.
   }
 
-  user_data = data.local_file.cloud_init_bastion_yaml.content
+  user_data = data.local_file.cloud_init_ingress_vpn_yaml.content
 
   tags = {
     Name = "Ingress VPN" # Name

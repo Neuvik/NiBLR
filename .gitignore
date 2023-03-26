@@ -47,8 +47,8 @@ terraform/providers.tf
 easy-rsa
 openvpn_client.conf
 
-./ansible/roles/openvpn_server/files/*
-./ansible/inventory/*
-./ansible/artifacts
-./ansible/artifacts/*
-./ansible/inventory
+ansible/roles/openvpn_server/files/*
+ansible/inventory/*
+ansible/artifacts
+ansible/artifacts/*
+ansible/inventory

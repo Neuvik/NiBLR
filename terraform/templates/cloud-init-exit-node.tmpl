@@ -27,29 +27,29 @@ write_files:
     path: /root/install.sh
     permissions: '0700'
   
-  - content: |
-      port 1194
-      proto udp
-      dev tun
-      ca /etc/openvpn/server/ca.crt
-      cert /etc/openvpn/server/server.crt
-      dh /etc/openvpn/server/dh2048.pem
-      tls-crypt /etc/openvpn/server/ta.key
-      server 10.8.0.0 255.255.255.0
-      ifconfig-pool-persist /var/log/openvpn/ipp.txt
-      keepalive 10 120
-      cipher AES-256-GCM
-      auth SHA256
-      persist-key
-      persist-tun
-      status /var/log/openvpn/openvpn-status.log
-      verb 3
-      explicit-exit-notify 1
-      push "redirect-gateway def1 bypass-dhcp"
-      push "dhcp-option DNS 208.67.222.222"
-      push "dhcp-option DNS 208.67.220.220"
-    path: /etc/openvpn/server/server.conf
-    permissions: '0700'
+  #- content: |
+  #    port 1194
+  #    proto udp
+  #    dev tun
+  #    ca /etc/openvpn/server/ca.crt
+  #    cert /etc/openvpn/server/server.crt
+  #    dh /etc/openvpn/server/dh2048.pem
+  #    tls-crypt /etc/openvpn/server/ta.key
+  #    server 10.8.0.0 255.255.255.0
+  #    ifconfig-pool-persist /var/log/openvpn/ipp.txt
+  #    keepalive 10 120
+  #    cipher AES-256-GCM
+  #    auth SHA256
+  #    persist-key
+  #    persist-tun
+  #    status /var/log/openvpn/openvpn-status.log
+  #    verb 3
+  #    explicit-exit-notify 1
+  #    push "redirect-gateway def1 bypass-dhcp"
+  #    push "dhcp-option DNS 208.67.222.222"
+  #    push "dhcp-option DNS 208.67.220.220"
+  #  path: /etc/openvpn/server/server.conf
+  #  permissions: '0700'
     
 users:
   - default

@@ -8,6 +8,7 @@ CURDIR=$(pwd)
 if [ "$OS" == "Darwin" ]; then
   rm -Rf ./easy-rsa
   rm -Rf /usr/local/etc/pki/*
+  rm -Rf $CURDIR/ansible/roles/openvpn_server/files/*.{key,crt}
 fi
 
 if [ "$OS" == "Linux" ]; then

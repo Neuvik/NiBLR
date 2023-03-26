@@ -1,21 +1,3 @@
-resource "aws_security_group" "exit-node-sec-group" {
-  name   = "exit-node-sec-group"
-  vpc_id = aws_vpc.vpc.id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 resource "aws_security_group" "default" {
   name        = "main-allow-defaults"
   description = "Allow SSH inbound traffic, from servers within the environment."

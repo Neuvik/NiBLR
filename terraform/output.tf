@@ -30,3 +30,17 @@ resource "local_file" "aws_ingress_vpn" {
   )
   filename = "${path.module}/../ansible/inventory/aws-ingress-vpn.yml"
 }
+
+resource "local_file" "aws_exit_node" {
+  content = templatefile("${path.module}/templates/inventory.tmpl", {
+    cat      = "aws-exit-node",
+    ip_addrs = [aws_instance.exit_node.public_ip],
+    vars = [
+      "ansible_user: ansible",
+      "ansible_python_interpreter: /usr/bin/python3",
+      "ansible_ssh_private_key_file: ~/.ssh/id_rsa"
+    ]
+    }
+  )
+  filename = "${path.module}/../ansible/inventory/aws-exit-node.yml"
+}

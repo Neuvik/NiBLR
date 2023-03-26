@@ -86,9 +86,9 @@ cp -v $REAL_PKI/issued/client1.crt $RSADIR/client-configs/keys/
 
 cp -v $REAL_PKI/private/* $CURDIR/ansible/roles/openvpn_server/files/
 cp -v $REAL_PKI/issued/* $CURDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/server-configs/keys/ $CUDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/client-configs/keys/*.crt $CUDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/client-configs/keys/*.key $CUDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/server-configs/keys/* $CURDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/client-configs/keys/*.crt $CURDIR/ansible/roles/openvpn_server/files/
+cp -v $RSADIR/client-configs/keys/*.key $CURDIR/ansible/roles/openvpn_server/files/
 
 #cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf /etc/openvpn/server/
 #sed -i 's/tls-auth ta.key 0/;tls-auth ta.key 0\ntls-crypt ta.key/g' /etc/openvpn/server/server.conf
