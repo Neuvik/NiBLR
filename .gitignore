@@ -46,3 +46,5 @@ terraform/variables.tf
 terraform/providers.tf
 easy-rsa
 openvpn_client.conf
+
+./ansible/roles/openvpn_server/files/*
