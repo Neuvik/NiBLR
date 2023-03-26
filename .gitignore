@@ -49,3 +49,6 @@ openvpn_client.conf
 
 ./ansible/roles/openvpn_server/files/*
 ./ansible/inventory/*
+./ansible/artifacts
+./ansible/artifacts/*
+./ansible/inventory
