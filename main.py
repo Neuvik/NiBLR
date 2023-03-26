@@ -23,8 +23,14 @@ TERRAFORM_DIRECTORY="terraform"
 TEMPLATE_DIRECTORY="templates"
 
 logging_path=os.path.join(LOGGING_DIRECTORY, LOGGING_FILE)
-logging.basicConfig(format='%(asctime)s %(message)s', filename=logging_path, level=logging.INFO)
+logging.basicConfig(format="%(asctime)s %(message)s", filename=logging_path, level=logging.INFO)
 
+
+def destroy():
+    tf = Terraform(working_dir="./terraform")
+    print(f"[+] Running terraform destroy")
+    return_code, stdout, stderr = tf.destroy(capture_output='yes', no_color=IsNotFlagged, force=IsNotFlagged, auto_approve=True)
+    logging.info(f"[+] Ran terraform destroy and returned {return_code}")
 
 def generate_providers(args):
     if args.azure == True:
@@ -101,20 +107,36 @@ def generate_variables(args):
 def main():
 
     parser = argparse.ArgumentParser(description='The inspiration for this comes from ProxyCannon-ng. We wanted to provide a new way to rotate through multiple providers and a salient script. Enjoy - @mosesrenegade')
-
     # Add argument for name for enabling azure 
     parser.add_argument('-a', '--azure', action='store_true', help="Enable Azure, default is disabled", default=False)
-
     # Add argument for operators keys
-    parser.add_argument('-o', '--operators', dest='operators', help="Please add a file with a list of operators to be used to login to the system", required=True)
-
+    parser.add_argument("-o", "--operators", dest="operators", help="Please add a file with a list of operators to be used to login to the system", required=True)
     # Add argument for operators ips
-    parser.add_argument('-i', '--ips', dest='ips', help="Please add a file with a list of operators ips to be used to login to the system", required=True)
-
-    parser.add_argument('-r', '--awsregion', dest='aws_region', help="AWS region, supported regions are defined by the AWS API", required=True)
+    parser.add_argument("-i", "--ips", dest="ips", help="Please add a file with a list of operators ips to be used to login to the system", required=True)
+    parser.add_argument("-r", "--awsregion", dest="aws_region", help="AWS region, supported regions are defined by the AWS API", required=True)
+    parser.add_argument("--destroy", action="store_true", help="This will run terraform destroy", default = False)
+    parser.add_argument("--debug", action="store_true", help="Turns on debugging and screen output", default = False)
     # parse arguments
     args = parser.parse_args()
     
+    print(f"""
+-------------------------------------------------------------------------------
+[-] Running with the following settings: 
+    Use Azure:                   {args.azure}
+    Operators File for SSH Keys: {args.operators}
+    Operators IP Address File:   {args.ips}
+    AWS Region to Build in:      {args.aws_region}
+    Running Destroy?             {args.destroy}
+-------------------------------------------------------------------------------    
+    """)
+
+    if args.destroy == True:
+        destroy()    
+        print(f"""
+[-] Terraform is now destroyed, re-run the command without the -d flag
+        """)
+        exit()
+
     logging.info(f"[+] Going into generator providers now")
     generate_providers(args)
 
@@ -123,35 +145,50 @@ def main():
 
     #os.system("cd terraform; terraform apply -auto-approve")
     try:
-        tf = Terraform(working_dir='./terraform')
+        tf = Terraform(working_dir="./terraform")
         print(f"[+] Running terraform fmt")
         return_code, stdout, stderr = tf.fmt(diff=True)
         logging.info(f"[+] Ran terraform fmt and returned {return_code}")
-        
+
         print(f"[+] Running terraform apply")
-        return_code, stdout, stderr = tf.apply(no_color=IsFlagged,input=False,auto_approve=True)
+        if args.debug == True:
+            return_code, stdout, stderr = tf.apply(capture_output='yes',skip_plan=True,no_color=IsFlagged,input=False,auto_approve=True)
+        else:
+            return_code, stdout, stderr = tf.apply(capture_output='yes',skip_plan=True,no_color=IsFlagged,input=False,auto_approve=True)
+        if return_code == 1:
+            print(f"""
+[-] Printing stdout: 
+-------------------------------------------------------------------------------
+${stdout}
+-------------------------------------------------------------------------------
+[-] Printing stderr:
+-------------------------------------------------------------------------------
+${stderr}
+-------------------------------------------------------------------------------
+            """)
+
         logging.info(f"[+] Ran terraform apply and returned {return_code}")
 
         os.system("cd terraform; terraform output -raw client_conf > ../openvpn_client.conf")
 
     except Exception as e:
-        logging.info(e)
+        logging.debug(e)
 
     print(f"""
 [-] We now have the system built but it will take a few minutes for this system to be available and for ansible to control it.
-[-] Let's use a countdown timer for 5 minutes to fix this.
+[-] Let"s use a countdown timer for 5 minutes to fix this.
 """)
     
     t = 300
     while t:
         mins, secs = divmod(t, 60)
-        timer = '{:02d}:{:02d}'.format(mins, secs)
+        timer = "{:02d}:{:02d}".format(mins, secs)
         print(timer, end="\r")
         time.sleep(1)
         t -= 1
 
     try:
-        ansiblerun = ansible_runner.run(private_data_dir='./ansible', playbook='playbook.yml')
+        ansiblerun = ansible_runner.run(private_data_dir="./ansible", playbook="playbook.yml")
         print(f"Running ansible now, the status is: {ansiblerun.status}: {ansiblerun.rc}")
         logging.info(f"Running ansible now, the status is: {ansiblerun.status}: {ansiblerun.rc}")
 
