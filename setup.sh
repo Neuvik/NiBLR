@@ -75,12 +75,9 @@ if [ ! -d "$CURDIR/wireguard_configs" ]; then
   mkdir -p $CURDIR/wireguard_configs
 fi
 cd $CURDIR/wireguard_configs
-wg genkey | tee wgHub.key
-cat wgHub.key | wg pubkey | sudo tee wgHub.pub
-wg genkey | tee client1.key
-cat client1.key | wg pubkey | sudo tee client1.pub
-wg genkey | tee exit-hub.key
-cat exit-hub.key | wg pubkey | sudo tee exit-hub.pub
+wg genkey | sudo tee wgHub.key | wg pubkey | sudo tee wgHub.pub
+wg genkey | sudo tee client1.key | wg pubkey | sudo tee client1.pub
+wg genkey | sudo tee exit-hub.key | wg pubkey | sudo tee exit-hub.pub
 sudo chown -R $(id -u):$(id -g) .
 
 #$EASYRSA_CMD --batch init-pki

@@ -41,6 +41,6 @@ DNS = 8.8.8.8, 8.8.4.4
 [Peer]
 PublicKey = ${file("${path.module}/../wireguard_configs/wgHub.pub")}
 Endpoint = ${aws_instance.aws_ingress_vpn.public_ip}:50000
-AllowedIPs = 0.0.0.0/0, ::/0
+AllowedIPs = 0.0.0.0/0
 EOF
 }

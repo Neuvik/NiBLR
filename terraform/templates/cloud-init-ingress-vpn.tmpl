@@ -32,8 +32,11 @@ write_files:
       Address = 10.10.9.1/24
       ListenPort = 50000
       PrivateKey = ${wg0_priv_key}
-      PreUp = iptables -t nat -A POSTROUTING -s 10.10.9.0/24  -o eth0 -j MASQUERADE
-      PostDown = iptables -t nat -D POSTROUTING -s 10.10.9.0/24  -o eth0 -j MASQUERADE
+      PostUp = ufw route allow in on wgHub out on eth0
+      PostUp = iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
+      PreDown = ufw route delete allow in on wgHub out on eth0
+      PreDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+      SaveConfigs = true
 
       # Client 1
       [Peer]
