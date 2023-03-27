@@ -10,7 +10,6 @@ import logging
 import csv
 import ansible_runner 
 import time
-import shutil
 
 from python_terraform import *
 from jinja2 import Environment, FileSystemLoader
@@ -139,11 +138,11 @@ def main():
     # Add argument for operators ips
     parser.add_argument("-i", "--ips", dest="ips", help="Please add a file with a list of operators ips to be used to login to the system", required=True)
     parser.add_argument("-r", "--awsregion", dest="aws_region", help="AWS region, supported regions are defined by the AWS API", required=True)
+    parser.add_argument("--setup", action="store_true", help="Setup the system from scratch", default = False)
     parser.add_argument("--destroy", action="store_true", help="This will run terraform destroy", default = False)
     parser.add_argument("--debug", action="store_true", help="Turns on debugging and screen output", default = False)
     parser.add_argument("-c", "--count", dest="count", help="How many exit nodes do you want? Default is 2", default = 2)
     parser.add_argument("-t", "--timer", dest="t", help="This is only to be used for debugging, this will set the countdown timer between the exiting of terraform and the start of Ansible. Default is 300 seconds", default = 300, type=int)
-    parser.add_argument("--setup", action="store_true", help="Setup the system from scratch", default = False)
     # parse arguments
     args = parser.parse_args()
     
@@ -247,10 +246,6 @@ ${stderr}
         os.mkdir(client_config_dir)
     
     print("Copying Files")
-    #shutil.copyfile('./ansible/roles/openvpn_server/files/ca.crt','client_config/ca.crt')
-    #shutil.copyfile('./ansible/roles/openvpn_server/files/client1.crt','client_config/client1.crt')
-    #shutil.copyfile('./ansible/roles/openvpn_server/files/client1.key','client_config/client1.key')
-    #shutil.copyfile('./ansible/roles/openvpn_server/files/ta.key','client_config/ta.key')
     os.system("cd terraform; terraform output -raw client_conf > ../wireguard_configs/wg0_client.conf")
 
 if __name__ == "__main__":

@@ -23,13 +23,6 @@
   raw: "cd /root; /root/install.sh"
   become: yes
 
-#- name: Copy key files to server
-#  copy:
-#    src: files/
-#    dest: /etc/openvpn/server/
-#  notify: restart openvpn
-#  become: yes
-
 #- name: Make sure the node directory exists
 #  ansible.builtin.file:
 #    path: /etc/openvpn/node
@@ -57,13 +50,12 @@
     state: present
   register: loadb_conf
 
-- name: Setup rule for WireGuard VPN Client source network to use secondary routing table
-  shell: 'ip rule | grep 10.10.9.0'
-  register: RuleExists
-
-- name: Add a rule if it doens't exist
-  shell: 'ip rule add from 10.10.9.0/24 table loadb'
-  when: RuleExists.stderr | length > 0
+- name: Copy ip_rule file to server
+  copy:
+    src: files/ip_rule.sh
+    dest: /root/ip_rule.sh
+  notify: run ip_rule
+  become: yes
 
 - name: NAT for WireGuard
   ansible.builtin.iptables:

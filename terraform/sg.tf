@@ -20,20 +20,6 @@ resource "aws_security_group" "default" {
   }
 
   ingress {
-    from_port   = 1194
-    to_port     = 1194
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 1195
-    to_port     = 1195
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
     from_port   = 50000
     to_port     = 50000
     protocol    = "udp"
@@ -41,8 +27,8 @@ resource "aws_security_group" "default" {
   }
 
   ingress {
-    from_port   = 51001
-    to_port     = 51001
+    from_port   = 50001
+    to_port     = 50001
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }

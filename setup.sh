@@ -74,10 +74,20 @@ umask 077
 if [ ! -d "$CURDIR/wireguard_configs" ]; then
   mkdir -p $CURDIR/wireguard_configs
 fi
+
+NUM=${1?Need the number of exit nodes, default is 2}
+
 cd $CURDIR/wireguard_configs
-wg genkey | sudo tee wgHub.key | wg pubkey | sudo tee wgHub.pub
-wg genkey | sudo tee client1.key | wg pubkey | sudo tee client1.pub
-wg genkey | sudo tee exit-hub.key | wg pubkey | sudo tee exit-hub.pub
+#wg genkey | sudo tee wgHub.key | wg pubkey | sudo tee wgHub.pub
+#wg genkey | sudo tee client1.key | wg pubkey | sudo tee client1.pub
+
+if [ ! -f "wireguard_config/wgNode$NUM.pub" ]; then
+    (( ++NUM ))
+    while (( --NUM >= 1 ))
+    do 
+      wg genkey | sudo tee exit-hub$NUM.key | wg pubkey | sudo tee exit-hub$NUM.pub
+    done
+fi
 sudo chown -R $(id -u):$(id -g) .
 
 #$EASYRSA_CMD --batch init-pki
