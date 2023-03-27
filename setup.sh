@@ -78,10 +78,17 @@ fi
 NUM=${1?Need the number of exit nodes, default is 2}
 
 cd $CURDIR/wireguard_configs
-#wg genkey | sudo tee wgHub.key | wg pubkey | sudo tee wgHub.pub
-#wg genkey | sudo tee client1.key | wg pubkey | sudo tee client1.pub
 
-if [ ! -f "wireguard_config/wgNode$NUM.pub" ]; then
+if [ ! -f $CURDIR/wireguard_configs/wgHub.pub ]; then
+  wg genkey | sudo tee wgHub.key | wg pubkey | sudo tee wgHub.pub
+fi
+
+if [ ! -f $CURDIR/wireguard_configs/client1.pub ]; then
+  wg genkey | sudo tee client1.key | wg pubkey | sudo tee client1.pub
+fi
+
+if [ ! -f $CURDIR/wireguard_configs/exit-hub$NUM.pub ]; then
+    echo "Building Exit Node Keys for $NUM hosts"
     (( ++NUM ))
     while (( --NUM >= 1 ))
     do 
