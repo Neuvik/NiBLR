@@ -44,11 +44,14 @@ logging/
 terraform/files/*.yaml
 terraform/variables.tf
 terraform/providers.tf
+terraform/exit_node*.tf
 easy-rsa
 openvpn_client.conf
 
 ansible/roles/openvpn_server/files/*
+ansible/roles/exit_nodes/files/*
 ansible/inventory/*
 ansible/artifacts
 ansible/artifacts/*
 ansible/inventory
+client_config

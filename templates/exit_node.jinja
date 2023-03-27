@@ -1,0 +1,89 @@
+#resource "null_resource" "run_setup_node_sh_{{ NUM }}" {
+#  provisioner "local-exec" {
+#    command = "../setup_nodes.sh {{ NUM }}"
+#  }
+     
+#  triggers = {
+#    always_run = "${timestamp()}"
+#  }
+
+#}
+
+resource "aws_instance" "exit_node{{ NUM }}" {
+  ami           = data.aws_ami.ubuntu.id # This is a standard Ubuntu AMI
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public_subnet.id # This is the main availabilty zone subnet group
+
+  vpc_security_group_ids = [
+    aws_security_group.default.id # This is a standard security group
+  ]
+
+  root_block_device {
+    volume_size = 50 # This is options, 50GB hard disk may be rather large.
+  }
+
+  user_data = data.local_file.cloud_init_exit_node_yaml{{ NUM }}.content
+
+  source_dest_check = false
+
+  tags = {
+    Name = "exit-node{{ NUM }}"
+  }
+}
+
+resource "local_file" "aws_exit_node{{ NUM }}" {
+  content = templatefile("${path.module}/templates/inventory.tmpl", {
+    cat      = "aws-exit-node{{ NUM }}",
+    ip_addrs = [aws_instance.exit_node{{ NUM }}.public_ip],
+    vars = [
+      "ansible_user: ansible",
+      "ansible_python_interpreter: /usr/bin/python3",
+      "ansible_ssh_private_key_file: ~/.ssh/id_rsa",
+      "certificate: node{{ NUM }}.crt",
+      "key: node{{ NUM }}.key",
+      "conf: node{{ NUM }}.conf"
+    ]
+    }
+  )
+  filename = "${path.module}/../ansible/inventory/aws-exit-node{{ NUM }}.yml"
+}
+
+# Configuration for the Exit nodes VPN server
+resource "local_file" "cloud_init_exit_node_template{{ NUM }}" {
+  content = templatefile("${path.module}/templates/cloud-init-exit-node.tmpl", {
+    operators   = var.operators_list,
+    ansible_key = file("~/.ssh/id_rsa.pub")
+  })
+  filename = "${path.module}/files/cloud-init-exit-node{{ NUM }}.yaml"
+}
+
+data "local_file" "cloud_init_exit_node_yaml{{ NUM }}" {
+  filename   = local_file.cloud_init_exit_node_template{{ NUM }}.filename
+  depends_on = [local_file.cloud_init_exit_node_template{{ NUM }}]
+}
+
+#output "node_num{{ NUM }}_config" {
+#  value = <<EOF
+#client
+#dev tun
+#proto udp
+#remote ${aws_instance.aws_ingress_vpn.public_ip} 1195
+#persist-key
+#persist-tun
+#verb 3
+#remote-cert-tls server
+#tls-crypt ta.key
+#auth SHA256
+#ca ca.crt
+#cert node{{ NUM }}.crt
+#key node{{ NUM }}.key
+#cipher AES-256-GCM
+#status /etc/openvpn/openvpn-status-node.log
+#log         /etc/openvpn/openvpn-node.log
+#log-append  /etc/openvpn/openvpn-node.log
+#verb 3
+#
+#EOF
+#}
+
+

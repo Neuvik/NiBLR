@@ -5,29 +5,33 @@ set -eu
 export TERRAFORM_VERSION="1.4.2"
 export OS="$(uname)"
 export TERRAFORM_INSTALLED="$(which terraform)"
-export EASYRSA_INSTALLED="$(which easyrsa)"
-export OPENVPN_INSTALLED="$(which openvpn)"
+#export EASYRSA_INSTALLED="$(which easyrsa)"
+#export OPENVPN_INSTALLED="$(which openvpn)"
 export CURDIR=$(pwd)
+export WIREGUARD_TOOLS=$(which wg)
 
-if [ "$OS" = "Darwin" ]; then 
-  export RSADIR=/usr/local/etc/pki
-  export EASYRSA_CMD=easyrsa
-else
-  export RSADIR=$(pwd)/easy-rsa
-  export EASYRSA_CMD=$RSADIR/easysa
-fi
+#if [ "$OS" = "Darwin" ]; then 
+  #export RSADIR=/usr/local/etc/pki
+  #export EASYRSA_CMD=easyrsa
+#else
+  #export RSADIR=$(pwd)/easy-rsa
+  #export EASYRSA_CMD=$RSADIR/easysa
+#fi
 
 if [ "$OS" = "Darwin" ]; then
   if [ ! "$TERRAFORM_INSTALLED" ]; then
     brew tap hashicorp/tap
     brew install hashicorp/tap/terraform
   fi
-  if [ ! "$EASYRSA_INSTALLED" ]; then
-    brew install easy-rsa
+  if [ ! "$WIREGUARD_TOOLS" ]; then
+    brew install wireguard-tools
   fi
-  if [ ! "$OPENVPN_INSTALLED" ]; then
-    brew install openvpn
-  fi
+  #if [ ! "$EASYRSA_INSTALLED" ]; then
+  #  brew install easy-rsa
+  #fi
+  #if [ ! "$OPENVPN_INSTALLED" ]; then
+  #  brew install openvpn
+  #fi
 fi
 
 if [ "$OS" = "Linux" ]; then
@@ -38,57 +42,73 @@ if [ "$OS" = "Linux" ]; then
       sudo apt update && sudo apt install terraform -y
     fi
   fi
-  if [ ! "$EASYRSA_INSTALLED" ]; then
-    apt install easy-rsa -y
+  if [ ! "$WIREGUARD_TOOLS "]; then
+    apt install wireguard -y
   fi
-  if [ ! "$OPENVPN_INSTALLED" ]; then
-    apt install openvpn -y
-  fi 
+  #if [ ! "$EASYRSA_INSTALLED" ]; then
+  #  apt install easy-rsa -y
+  #fi
+  #if [ ! "$OPENVPN_INSTALLED" ]; then
+  #  apt install openvpn -y
+  #fi 
 fi
 
-if [ ! "$OS" = "Darwin" ]; then 
-    mkdir $RSADIR
-    ln -s /usr/share/easy-rsa/* $RSADIR/
-    cd $RSADIR
-    cp vars.example vars
-    cd $RSADIR
-    export REAL_PKI=$RSADIR/pki
+#if [ ! "$OS" = "Darwin" ]; then 
+    #mkdir $RSADIR
+    #ln -s /usr/share/easy-rsa/* $RSADIR/
+    #cd $RSADIR
+    #cp vars.example vars
+    #cd $RSADIR
+    #export REAL_PKI=$RSADIR/pki
+#fi
+
+#if [ "$OS" == "Darwin" ]; then
+#  mkdir ./easy-rsa
+#  cd ./easy-rsa
+#  export REAL_PKI=/usr/local/etc/pki
+#fi
+
+# setup initial wireguard configurations
+
+umask 077
+if [ ! -d "$CURDIR/wireguard_configs" ]; then
+  mkdir -p $CURDIR/wireguard_configs
 fi
+cd $CURDIR/wireguard_configs
+wg genkey | tee wgHub.key
+cat wgHub.key | wg pubkey | sudo tee wgHub.pub
+wg genkey | tee client1.key
+cat client1.key | wg pubkey | sudo tee client1.pub
+wg genkey | tee exit-hub.key
+cat exit-hub.key | wg pubkey | sudo tee exit-hub.pub
+sudo chown -R $(id -u):$(id -g) .
 
-if [ "$OS" == "Darwin" ]; then
-  mkdir ./easy-rsa
-  cd ./easy-rsa
-  export REAL_PKI=/usr/local/etc/pki
-fi
-
-### Initial Copies are just for Backup Purposes
-
-$EASYRSA_CMD --batch init-pki
-$EASYRSA_CMD --batch build-ca nopass
-$EASYRSA_CMD --batch gen-req server nopass
-$EASYRSA_CMD --batch sign-req server server
-mkdir -p $RSADIR/server-configs/keys
-mkdir -p $RSADIR/client-configs/keys
-openvpn --genkey secret $RSADIR/ta.key
-/usr/bin/openssl dhparam -out $RSADIR/dh2048.pem 2048
-cp -v $REAL_PKI/private/server.key $RSADIR/server-configs/keys/
-cp -v $REAL_PKI/issued/server.crt $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
-cp -v $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
-cp -v $REAL_PKI/ca.crt $RSADIR/client-configs/keys/
-cp -v $RSADIR/ta.key $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
-cp -v $RSADIR/dh2048.pem $RSADIR/server-configs/keys/
-$EASYRSA_CMD --batch gen-req client1 nopass
-$EASYRSA_CMD --batch sign-req client client1
-cp -v $REAL_PKI/private/client1.key $RSADIR/client-configs/keys/
-cp -v $REAL_PKI/issued/client1.crt $RSADIR/client-configs/keys/
+#$EASYRSA_CMD --batch init-pki
+#$EASYRSA_CMD --batch build-ca nopass
+#$EASYRSA_CMD --batch gen-req server nopass
+#$EASYRSA_CMD --batch sign-req server server
+#mkdir -p $RSADIR/server-configs/keys
+#mkdir -p $RSADIR/client-configs/keys
+#openvpn --genkey secret $RSADIR/ta.key
+#/usr/bin/openssl dhparam -out $RSADIR/dh2048.pem 2048
+#cp -v $REAL_PKI/private/server.key $RSADIR/server-configs/keys/
+#cp -v $REAL_PKI/issued/server.crt $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+#cp -v $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+#cp -v $REAL_PKI/ca.crt $RSADIR/client-configs/keys/
+#cp -v $RSADIR/ta.key $REAL_PKI/ca.crt $RSADIR/server-configs/keys/
+#cp -v $RSADIR/dh2048.pem $RSADIR/server-configs/keys/
+#$EASYRSA_CMD --batch gen-req client1 nopass
+#$EASYRSA_CMD --batch sign-req client client1
+#cp -v $REAL_PKI/private/client1.key $RSADIR/client-configs/keys/
+#cp -v $REAL_PKI/issued/client1.crt $RSADIR/client-configs/keys/
 
 ### Getting ready for Ansible 
 
-cp -v $REAL_PKI/private/* $CURDIR/ansible/roles/openvpn_server/files/
-cp -v $REAL_PKI/issued/* $CURDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/server-configs/keys/* $CURDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/client-configs/keys/*.crt $CURDIR/ansible/roles/openvpn_server/files/
-cp -v $RSADIR/client-configs/keys/*.key $CURDIR/ansible/roles/openvpn_server/files/
+#cp -v $REAL_PKI/private/* $CURDIR/ansible/roles/openvpn_server/files/
+#cp -v $REAL_PKI/issued/* $CURDIR/ansible/roles/openvpn_server/files/
+#cp -v $RSADIR/server-configs/keys/* $CURDIR/ansible/roles/openvpn_server/files/
+#cp -v $RSADIR/client-configs/keys/*.crt $CURDIR/ansible/roles/openvpn_server/files/
+#cp -v $RSADIR/client-configs/keys/*.key $CURDIR/ansible/roles/openvpn_server/files/
 
 #cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf /etc/openvpn/server/
 #sed -i 's/tls-auth ta.key 0/;tls-auth ta.key 0\ntls-crypt ta.key/g' /etc/openvpn/server/server.conf

@@ -1,5 +1,15 @@
 # NiBLR
 
+## Getting started
+
+1. Clone this repo
+2. run `pip3 install -r requirements.txt`
+3. Currently we have pinned the argparse to require specific settings so run the `./setup.sh` manually to setup the initial system.
+4. To run the system you need to specify some flags, -o, -i, and -r. See the how to or examples.
+   1. `python3 main.py -o operator.csv -i operator_ips.txt -r us-east-1`
+
+This will build your environment in `us-east-1`.
+
 ## How to use 
 
 This system requires a few command line utilities to work.

@@ -2,7 +2,12 @@
 - hosts: aws-ingress-vpn 
   become: yes
   roles:
-    - openvpn_server
+    - wireguard_hub
   #vars_files:
     #- vars/vars.yml
     #- vars/users.yml
+
+- hosts: aws-exit-node*
+  become: yes
+  roles:
+    - exit_nodes

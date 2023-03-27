@@ -1,17 +1,3 @@
-resource "local_file" "cloud_init_ingress_vpn_template" {
-  content = templatefile("${path.module}/templates/cloud-init-ingress-vpn.tmpl", {
-    operators   = var.operators_list,
-    node_nums   = var.node_nums
-    ansible_key = file("~/.ssh/id_rsa.pub")
-  })
-  filename = "${path.module}/files/cloud-init-ingress-vpn.yaml"
-}
-
-data "local_file" "cloud_init_ingress_vpn_yaml" {
-  filename   = local_file.cloud_init_ingress_vpn_template.filename
-  depends_on = [local_file.cloud_init_ingress_vpn_template]
-}
-
 resource "aws_instance" "aws_ingress_vpn" {
   ami           = data.aws_ami.ubuntu.id # This is a standard Ubuntu AMI
   instance_type = "t2.micro"             # Micro server for Ingress VPN

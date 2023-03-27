@@ -1,7 +1,7 @@
 ${cat}:
    hosts:
 %{for addr in ip_addrs ~}
-     ${addr}:
+     ${addr}
 %{endfor ~}
    vars:
 %{for var in vars ~}

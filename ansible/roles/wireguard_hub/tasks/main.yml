@@ -1,0 +1,97 @@
+---
+- name: Make python3 default
+  alternatives:
+     name: python
+     path: /usr/bin/python3
+     link: /usr/bin/python
+     priority: 10
+  become: yes
+
+#- name: Stop the main vpn service
+#  ansible.builtin.service:
+#    name: openvpn
+#    state: stopped
+#  become: yes
+
+#- name: Disable the main vpn service
+#  ansible.builtin.service:
+#    name: openvpn
+#    enabled: false
+#  become: yes
+
+- name: Run the existing installation file
+  raw: "cd /root; /root/install.sh"
+  become: yes
+
+#- name: Copy key files to server
+#  copy:
+#    src: files/
+#    dest: /etc/openvpn/server/
+#  notify: restart openvpn
+#  become: yes
+
+#- name: Make sure the node directory exists
+#  ansible.builtin.file:
+#    path: /etc/openvpn/node
+#    state: directory
+
+#- name: Move files to their right locations
+#  raw: 'mv /etc/openvpn/server/node* /etc/openvpn/server/node/'
+#  ignore_errors: true
+
+#- name: Copy ca and other known files.
+#  copy:
+#    src: "{{ item }}"
+#    dest: /etc/openvpn/node/
+#  with_items: 
+#    - ca.crt
+#    - ca.key
+#    - ta.key
+#    - dh2048.pem
+#  become: yes
+
+- name: Setup secondary route table
+  ansible.builtin.lineinfile:
+    name: "/etc/iproute2/rt_tables"
+    line: "50	loadb"
+    state: present
+  register: loadb_conf
+  #failed_when: (loadb_conf is changed) or (loadb_conf is failed)
+
+- name: Setup rule for OpenVPN Client source network to use secondary routing table
+  raw: 'ip rule add from 10.8.0.0/24 table loadb'
+
+- name: Nat for OpenVPN
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: eth0
+    jump: MASQUERADE
+    comment: Natting for All Targets
+  become: yes
+
+- name: Setting Sysctl
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Setting Sysctl
+  ansible.posix.sysctl:
+    name: net.ipv4.fib_multipath_hash_policy
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+
+#- name: Hack to force the new service
+#  raw: "systemctl enable -f openvpn-server@server.service"
+#  become: yes
+
+#- name: Start service openvpn, if not started
+#  ansible.builtin.service:
+#    name: openvpn-server@server.service
+#    state: started
+#  become: yes

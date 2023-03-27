@@ -7,22 +7,48 @@
      priority: 10
   become: yes
 
-- name: Run the existing installation file
-  raw: "cd /root; /root/install.sh"
+- name: Setting Sysctl
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
   become: yes
 
-- name: Copy key files to server
-  copy:
-    src: files/
-    dest: /etc/openvpn/server/
+- name: Nat for OpenVPN
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: eth0
+    jump: MASQUERADE
+    comment: Natting for Exit Nodes
   become: yes
 
-- name: Hack to force the new service
-  raw: "systemctl enable -f openvpn-server@server.service"
-  become: yes
+#- name: Copy key files to server
+#  copy:
+#    src: files/{{ key }}
+#    dest: /etc/openvpn/server/{{ key }}
+#  become: yes
 
-- name: Start service openvpn, if not started
-  ansible.builtin.service:
-    name: openvpn-server@server.service
-    state: started
-  become: yes
+#- name: Copy certificate files to server
+#  copy:
+#    src: files/{{ certificate }}
+#    dest: /etc/openvpn/server/{{ certificate }}
+#  become: yes
+
+#- name: Copy conf files to server
+#  copy:
+#    src: files/{{ conf }}
+#    dest: /etc/openvpn/server/server.conf
+#  become: yes
+
+#- name: Hack to force the new service
+#  raw: "systemctl enable -f openvpn-server@server.service"
+#  become: yes
+
+#- name: Start service openvpn, if not started
+#  ansible.builtin.service:
+#    name: openvpn-server@server.service
+#    state: started
+#  become: yes
