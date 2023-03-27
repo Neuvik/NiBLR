@@ -56,15 +56,21 @@
     line: "50	loadb"
     state: present
   register: loadb_conf
-  #failed_when: (loadb_conf is changed) or (loadb_conf is failed)
 
-- name: Setup rule for OpenVPN Client source network to use secondary routing table
-  raw: 'ip rule add from 10.8.0.0/24 table loadb'
+- name: Setup rule for WireGuard VPN Client source network to use secondary routing table
+  shell: 'ip rule | grep 10.10.9.0'
+  register: RuleExists
 
-- name: Nat for OpenVPN
+- name: Add a rule if it doens't exist
+  shell: 'ip rule add from 10.10.9.0/24 table loadb'
+  when: RuleExists.stderr | length > 0
+
+- name: NAT for WireGuard
   ansible.builtin.iptables:
     table: nat
     chain: POSTROUTING
+    source: 10.10.9.0/24
+    #in_interface: wgHub
     out_interface: eth0
     jump: MASQUERADE
     comment: Natting for All Targets
