@@ -22,6 +22,7 @@
   copy:
     src: files/ip_rule.sh
     dest: /root/ip_rule.sh
+    mode: '0700'
   notify: run ip_rule
   become: yes
 
@@ -40,3 +41,18 @@
     sysctl_set: true
     state: present
     reload: true
+
+- name: Copying files
+  copy: 
+    src: "{{ item }}"
+    dest: /etc/wireguard/
+  with_fileglob:
+    - "exit-node*.conf"
+
+- name: Copy bring-up-nodes file to server
+  copy:
+    src: files/bring-up-nodes.sh
+    dest: /root/bring-up-nodes.sh
+    mode: '0700'
+  notify: run bring-up-nodes
+  become: yes

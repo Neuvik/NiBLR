@@ -28,7 +28,7 @@ resource "local_file" "aws_exit_node{{ NUM }}" {
       "ansible_user: ansible",
       "ansible_python_interpreter: /usr/bin/python3",
       "ansible_ssh_private_key_file: ~/.ssh/id_rsa",
-      "file: exit-node{{ NUM }}"
+      "file: exit-node-wg0{{ NUM }}.conf"
     ]
     }
   )
@@ -48,4 +48,39 @@ resource "local_file" "cloud_init_exit_node_template{{ NUM }}" {
 data "local_file" "cloud_init_exit_node_yaml{{ NUM }}" {
   filename   = local_file.cloud_init_exit_node_template{{ NUM }}.filename
   depends_on = [local_file.cloud_init_exit_node_template{{ NUM }}]
+}
+
+
+# Configuration for the Exit nodes VPN server
+resource "local_file" "cloud_init_exit_node_wg0{{ NUM }}" {
+  content = templatefile("${path.module}/templates/exit-node-wg0.tmpl", {
+    exit_node_vpn_priv_ip = "10.10.10.10{{ NUM }}",
+    exit_node_priv_key    = file("../wireguard_configs/exit-hub{{ NUM }}.key"),
+    ingress_pub_key       = file("../wireguard_configs/wgHub.pub"),
+    ingress_node_ip       = "10.10.10.{{ NUM }}"
+  })
+  filename = "${path.module}/../ansible/roles/exit_nodes/files/exit-node-wg0{{ NUM }}.conf"
+}
+
+data "local_file" "cloud_init_exit_node_wg0{{ NUM }}_conf" {
+  filename   = local_file.cloud_init_exit_node_wg0{{ NUM }}.filename
+  depends_on = [local_file.cloud_init_exit_node_wg0{{ NUM }}]
+}
+
+# Configuration for the Ingress nodes matching the exit node configuration
+resource "local_file" "cloud_init_ingress_exit_node_wg0{{ NUM }}" {
+  content = templatefile("${path.module}/templates/ingress-node-exit-node-conf.tmpl", {
+    exit_node_pub_key     = file("../wireguard_configs/exit-hub{{ NUM }}.pub"),
+    ingress_priv_key      = file("../wireguard_configs/wgHub.key"),
+    ingress_node_ip       = "10.10.10.{{ NUM }}",
+    ingress_vpn_address   = aws_instance.aws_ingress_vpn.public_ip
+    num                   = "{{ NUM }}",
+    exit_node_vpn_priv_ip = "10.10.10.10{{ NUM }}",
+  })
+  filename = "${path.module}/../ansible/roles/wireguard_hub/files/exit-node{{ NUM }}.conf"
+}
+
+data "local_file" "cloud_init_ingress_exit_node_wg0{{ NUM }}_conf" {
+  filename   = local_file.cloud_init_exit_node_wg0{{ NUM }}.filename
+  depends_on = [local_file.cloud_init_exit_node_wg0{{ NUM }}]
 }

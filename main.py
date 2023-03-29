@@ -31,12 +31,6 @@ TEMPLATE_DIRECTORY="templates"
 
 ANSIBLE_DIRECTORY="ansible"
 
-WIREGUARD_IP_PAIRS_CONFIG="wg_subnets.csv"
-
-EXIT_WG_CONFIG="wg0-"
-EXIT_WG_CONFIG_TEMPLATE="exit-node-wg0.jinja"
-WG_CONFIGS_DIRECTORY="wireguard_configs"
-
 logging_path=os.path.join(LOGGING_DIRECTORY, LOGGING_FILE)
 logging.basicConfig(format="%(asctime)s %(message)s", filename=logging_path, level=logging.INFO)
 
@@ -134,49 +128,6 @@ def generate_variables(args):
     logging.info(f"[+] Creating the variables terraform file: {variables_full_path}")
     print(f"[+] Creating the variables terraform file: {variables_full_path}")
 
-def generator_wireguard_configs(args):
-
-    file_loader = FileSystemLoader(TEMPLATE_DIRECTORY)
-    env = Environment(loader=file_loader)
-
-    wireguard_pairs_dict = {}
-    wireguard_pairs_list = []
-
-    if not os.path.exists(WIREGUARD_IP_PAIRS_CONFIG):
-        print(f"File doesn't exist: {WIREGUARD_IP_PAIRS_CONFIG}")
-        print(f"Going to exit")
-        return False
-    
-    with open(WIREGUARD_IP_PAIRS_CONFIG, "r") as r:
-        csvreader=csv.reader(r)
-        next(csvreader)
-
-        for row in csvreader:
-            key = row[0]
-            value = row[1]
-            
-            wireguard_pairs_dict[key] = value
-
-        wireguard_pairs_list.append(wireguard_pairs_dict)
-    r.close()
-
-    iterator = args.count
-    
-    while iterator > 0 :
-            
-        wg_template = env.get_template(EXIT_WG_CONFIG_TEMPLATE)
-        wg_template_output = wg_template.render(
-                
-        )
-        
-        CURRENT_FILE_NAME=(f"{EXIT_WG_CONFIG}{iterator}.conf")
-        variables_full_path = os.path.join(WG_CONFIGS_DIRECTORY, CURRENT_FILE_NAME)
-        print(variables_full_path)
-        with open(variables_full_path, "w") as f:
-            f.write(wg_template_output)
-        
-        iterator -= 1
-
 def main():
 
     parser = argparse.ArgumentParser(description='The inspiration for this comes from ProxyCannon-ng. We wanted to provide a new way to rotate through multiple providers and a salient script. Enjoy - @mosesrenegade')
@@ -212,8 +163,6 @@ def main():
 -------------------------------------------------------------------------------    
     """)
     
-    generator_wireguard_configs(args)
-    exit()
     if args.destroy == True:
         destroy()
         os.system("./full_pki_delete.sh")    

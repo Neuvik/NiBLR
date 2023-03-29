@@ -1,0 +1,18 @@
+[Interface]
+PrivateKey = ${ingress_priv_key}
+Address = ${ingress_node_ip}/32
+DNS = 8.8.8.8, 8.8.4.4
+Table = off
+
+PostUp = ip route add ${exit_node_vpn_priv_ip}/32 dev exit-node${num} proto kernel scope link src ${ingress_node_ip}
+PostUp = iptables -A FORWARD -i exit-node${num} -j ACCEPT; iptables -A FORWARD -o exit-node${num} -j ACCEPT
+PostUp = /root/add_route.bash ${exit_node_vpn_priv_ip}
+
+PostDown = /root/del_route.bash ${exit_node_vpn_priv_ip}
+PostDown = ip route del ${exit_node_vpn_priv_ip}/32 dev exit-node${num} proto kernel scope link src ${ingress_node_ip}
+PostDown = iptables -D FORWARD -i exit-node${num} -j ACCEPT; iptables -D FORWARD -o exit-node${num} -j ACCEPT
+
+[Peer]
+PublicKey = ${exit_node_pub_key}
+Endpoint = ${ingress_vpn_address}:50000
+AllowedIPs = 0.0.0.0/0

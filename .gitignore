@@ -53,5 +53,5 @@ ansible/inventory
 wireguard_configs
 wireguard_configs/*
 
-ansible/roles/exit_node/files/*
-ansible/roles/wireguard_hub/files/*
+ansible/roles/exit_nodes/files/*
+ansible/roles/wireguard_hub/files/*.conf
