@@ -1,0 +1,3 @@
+python_terraform
+jinja2
+ansible_runner

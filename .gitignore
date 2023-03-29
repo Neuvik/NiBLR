@@ -37,10 +37,9 @@ builds
 
 .env
 
-logging
-logging/
-*.txt
-*.csv
+logging/*
+operator_ips.txt
+operator.csv
 
 terraform/files/*.yaml
 terraform/variables.tf
