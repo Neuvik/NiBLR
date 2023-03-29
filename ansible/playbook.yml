@@ -1,4 +1,9 @@
 ---
+- hosts: aws-exit-node*
+  become: yes
+  roles:
+    - exit_nodes
+
 - hosts: aws-ingress-vpn 
   become: yes
   roles:
@@ -6,8 +11,3 @@
   #vars_files:
     #- vars/vars.yml
     #- vars/users.yml
-
-- hosts: aws-exit-node*
-  become: yes
-  roles:
-    - exit_nodes

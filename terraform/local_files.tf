@@ -4,8 +4,9 @@ resource "local_file" "cloud_init_ingress_vpn_template" {
     operators          = var.operators_list,
     node_nums          = var.node_nums,
     ansible_key        = file("~/.ssh/id_rsa.pub"),
-    wg0_priv_key       = file("${path.module}/../wireguard_configs/wgHub.key")
-    client1_public_key = file("${path.module}/../wireguard_configs/client1.pub")
+    wg0_priv_key       = file("${path.module}/../wireguard_configs/wgHub.key"),
+    client1_public_key = file("${path.module}/../wireguard_configs/client1.pub"),
+    hostname           = var.vpn_hostname
   })
   filename = "${path.module}/files/cloud-init-ingress-vpn.yaml"
 }

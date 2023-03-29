@@ -1,0 +1,17 @@
+[Interface]
+PrivateKey = {{ EXIT_NODE_PRIV_KEY }}
+Address = {{ LOCAL_IP }}}/32
+DNS = 8.8.8.8, 8.8.4.4
+Table = loadb
+
+PostUp = iptables -A FORWARD -i exit-node{{NUM}} -j ACCEPT; iptables -A FORWARD -o exit-node{{NUM}} -j ACCEPT
+PostUp = /root/add_route.bash {{ EXIT_NODE_WG_IP }}
+PostUp = ip route add {{ EXIT_NODE_WG_IP }}/32 dev exit-node{{NUM}} proto kernel scope link src {{ LOCAL_IP }}
+PostDown = iptables -D FORWARD -i exit-node{{NUM}} -j ACCEPT; iptables -D FORWARD -o exit-node{{NUM}} -j ACCEPT
+PostUp = /root/del_route.bash {{ EXIT_NODE_WG_IP }}
+PostDown = ip route del {{ EXIT_NODE_WG_IP }}/32 dev exit-node{{NUM}} proto kernel scope link src {{ LOCAL_IP }}
+
+[Peer]
+PublicKey = {{ INGRESS_VPN_PUB_KEY }}
+Endpoint = {{ INGRESS_VPN }}:50000
+AllowedIPs = 0.0.0.0/0

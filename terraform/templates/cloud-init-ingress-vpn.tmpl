@@ -1,6 +1,7 @@
 #cloud-config
 # Adds the users to the system
 
+fqdn: ${hostname}
 write_files:
   - content: |
       #!/bin/bash
@@ -26,16 +27,103 @@ write_files:
       sysctl -w net.ipv4.ip_forward=1
     path: /root/install.sh
     permissions: '0700'
+
+  - content: |
+      #! /bin/bash
+      IP=$1
+      DIR=/root
+      # random sleep to avoid race condition
+      echo "Sleeping to avoid race conditions"
+      sleep $[ ( $RANDOM % 10 )  + 1 ]s
+      for pid in $(pidof -x "add_route.bash"); do
+	      if [ $pid != $$ ]; then
+		      echo "[!] ROUTE ADD: another addition process is running. Waiting our turn..."
+		      sleep 2
+	      else
+		      break
+	      fi
+      done
+      # grab last ran route cmd
+      ROUTECMD=$(cat $DIR/.routecmd)
+      # is there a last used route cmd
+      if [ -z "$ROUTECMD" ];then
+	      echo "[!] ROUTE ADD: first time adding a route"
+	      ROUTECMD="ip route add default proto static scope global table loadb nexthop via $IP weight 100"
+	      eval $ROUTECMD
+	      echo "[+] ROUTE ADD CMD: $ROUTECMD"
+	      # save route as a replace command
+	      ROUTECMD=`echo $ROUTECMD | sed 's/ip route add/ip route replace/'`
+      else
+	      echo "[+] CHECK: checking if this route already exists"
+	      if [[ $(ip route show table loadb | grep -o $IP) ]];then
+	             echo "[-] ROUTE ADD CMD: Route Exists"
+		           exit 0
+	      else
+              echo "[+] ROUTE ADD: adding $IP to route table"
+		          ROUTECMD="$ROUTECMD nexthop via $IP weight 100 "
+		          eval $ROUTECMD
+		          echo "[+] ROUTE ADD CMD: $ROUTECMD"
+              echo $ROUTECMD > $DIR/.routecmd
+	      fi
+      fi
+    path: /root/add_route.bash
+    permissions: '0700'
+
+  - content: |
+      #! /bin/bash
+      IP=$1
+      DIR=/root
+      # random sleep to avoid race condition
+      echo "Sleeping to avoid race condition"
+      sleep $[ ( $RANDOM % 5 )  + 1 ]s
+      for pid in $(pidof -x "del_route.bash"); do
+              if [ $pid != $$ ]; then
+                      echo "[!] ROUTE DELETE: another addition process is running. Waiting our turn..."
+                      sleep 2
+              else
+                      break
+              fi
+      done
+      # grab last ran route cmd
+      ROUTECMD=$(cat $DIR/.routecmd)
+      # is there a last used route cmd
+      if [ -z "$ROUTECMD" ];then
+	      echo "[!] ROUTE DELETE: cannot find last route cmd used. Will not delete $IP from routing table"
+	      exit 0
+      else
+	      if [[ $(ip route show table loadb | grep -o $IP) ]];then
+		      # add route statement without specific IP (delete route)
+		      ROUTECMD=`echo $ROUTECMD | sed "s/nexthop via $IP weight 100//"`
+		      # check if we are delete the very last route. if so, change route cmd to a delete cmd
+		      if [[ $(echo $ROUTECMD | grep -o nexthop) ]]; then
+			      echo "[-] ROUTE DELETE: deleting $IP from routing table"
+			      echo "[-] ROUTE DELETE CMD: $ROUTECMD"
+			      eval $ROUTECMD
+			      # save last ran route to file
+			      echo $ROUTECMD > $DIR/.routecmd
+		      else
+			      echo "[!] ROUTE DELETE: removing last route"
+			      ROUTECMD=`echo $ROUTECMD | sed 's/ip route replace/ip route del/'`
+			      eval $ROUTECMD
+			      echo "[-] ROUTE DELETE CMD: $ROUTECMD"
+			      # last route deleted, no need to save last route statement
+			      rm -f $DIR/.routecmd
+		      fi
+	      else
+		      echo "[!] ROUTE DELETE: IP $IP is not in the route table"
+		      exit 0
+	      fi
+      fi
+    path: /root/add_route.bash
+    permissions: '0700'
   
   - content: |
       [Interface]
       Address = 10.10.9.1/24
       ListenPort = 50000
       PrivateKey = ${wg0_priv_key}
-      #PostUp = ufw route allow in on wgHub out on eth0
-      PostUp = iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
-      #PreDown = ufw route delete allow in on wgHub out on eth0
-      PreDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+      PostUp   = iptables -A FORWARD -i wgHub -j ACCEPT; iptables -A FORWARD -o wgHub -j ACCEPT
+      PostDown = iptables -D FORWARD -i wgHub -j ACCEPT; iptables -D FORWARD -o wgHub -j ACCEPT
       SaveConfigs = true
 
       # Client 1
@@ -47,6 +135,7 @@ write_files:
     permissions: '0700'
 
 runcmd:
+  - hostnamectl set-hostname ${hostname}
   - systemctl enable wg-quick@wgHub.service
   - systemctl start wg-quick@wgHub.service
   

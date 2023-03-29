@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# (c) Neuvik 
+# (c) Neuvik 2023
 #
 
 import argparse
@@ -30,6 +30,12 @@ TERRAFORM_DIRECTORY="terraform"
 TEMPLATE_DIRECTORY="templates"
 
 ANSIBLE_DIRECTORY="ansible"
+
+WIREGUARD_IP_PAIRS_CONFIG="wg_subnets.csv"
+
+EXIT_WG_CONFIG="wg0-"
+EXIT_WG_CONFIG_TEMPLATE="exit-node-wg0.jinja"
+WG_CONFIGS_DIRECTORY="wireguard_configs"
 
 logging_path=os.path.join(LOGGING_DIRECTORY, LOGGING_FILE)
 logging.basicConfig(format="%(asctime)s %(message)s", filename=logging_path, level=logging.INFO)
@@ -118,6 +124,7 @@ def generate_variables(args):
         OPERATORS_LIST = operators_list,
         OPERATOR_IPS = operator_ips,
         AWS_REGION = args.aws_region,
+        NUMS = args.count
     )
 
     variables_full_path = os.path.join(TERRAFORM_DIRECTORY, VARIABLES_TF)
@@ -127,6 +134,48 @@ def generate_variables(args):
     logging.info(f"[+] Creating the variables terraform file: {variables_full_path}")
     print(f"[+] Creating the variables terraform file: {variables_full_path}")
 
+def generator_wireguard_configs(args):
+
+    file_loader = FileSystemLoader(TEMPLATE_DIRECTORY)
+    env = Environment(loader=file_loader)
+
+    wireguard_pairs_dict = {}
+    wireguard_pairs_list = []
+
+    if not os.path.exists(WIREGUARD_IP_PAIRS_CONFIG):
+        print(f"File doesn't exist: {WIREGUARD_IP_PAIRS_CONFIG}")
+        print(f"Going to exit")
+        return False
+    
+    with open(WIREGUARD_IP_PAIRS_CONFIG, "r") as r:
+        csvreader=csv.reader(r)
+        next(csvreader)
+
+        for row in csvreader:
+            key = row[0]
+            value = row[1]
+            
+            wireguard_pairs_dict[key] = value
+
+        wireguard_pairs_list.append(wireguard_pairs_dict)
+    r.close()
+
+    iterator = args.count
+    
+    while iterator > 0 :
+            
+        wg_template = env.get_template(EXIT_WG_CONFIG_TEMPLATE)
+        wg_template_output = wg_template.render(
+                
+        )
+        
+        CURRENT_FILE_NAME=(f"{EXIT_WG_CONFIG}{iterator}.conf")
+        variables_full_path = os.path.join(WG_CONFIGS_DIRECTORY, CURRENT_FILE_NAME)
+        print(variables_full_path)
+        with open(variables_full_path, "w") as f:
+            f.write(wg_template_output)
+        
+        iterator -= 1
 
 def main():
 
@@ -163,6 +212,8 @@ def main():
 -------------------------------------------------------------------------------    
     """)
     
+    generator_wireguard_configs(args)
+    exit()
     if args.destroy == True:
         destroy()
         os.system("./full_pki_delete.sh")    
@@ -208,6 +259,9 @@ ${stderr}
             """)
 
         logging.info(f"[+] Ran terraform apply and returned {return_code}")
+    
+        print("Copying Files")
+        os.system("cd terraform; terraform output -raw wgNodeHub_conf > ../wireguard_configs/wgNodeHub_template.conf")
 
     except Exception as e:
         logging.debug(e)
@@ -247,6 +301,7 @@ ${stderr}
     
     print("Copying Files")
     os.system("cd terraform; terraform output -raw client_conf > ../wireguard_configs/wg0_client.conf")
+    
 
 if __name__ == "__main__":
     try:

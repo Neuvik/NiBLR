@@ -1,6 +1,7 @@
 #cloud-config
 # Adds the users to the system
 
+fqdn: ${hostname}
 write_files:
   - content: |
       #!/bin/bash
@@ -21,8 +22,6 @@ write_files:
   - content: |
       #!/bin/bash
       sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-      #systemctl -f enable openvpn-server@server.service
-      #systemctl start openvpn-server@server.service
       sysctl -w net.ipv4.ip_forward=1
       sysctl -p 
     path: /root/install.sh
@@ -45,6 +44,8 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
  %{ endfor ~}
 
+runcmd:
+  - hostnamectl set-hostname ${hostname}
 
 # These packaages are just placeholders, bastions are typically just doing SSH Inbound for Tunneling.
 packages:

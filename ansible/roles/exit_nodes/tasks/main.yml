@@ -16,7 +16,7 @@
     reload: true
   become: yes
 
-- name: Nat for OpenVPN
+- name: Nat for Masquerade
   ansible.builtin.iptables:
     table: nat
     chain: POSTROUTING
@@ -25,30 +25,19 @@
     comment: Natting for Exit Nodes
   become: yes
 
-#- name: Copy key files to server
-#  copy:
-#    src: files/{{ key }}
-#    dest: /etc/openvpn/server/{{ key }}
-#  become: yes
+- name: WireGuard Configuration
+  copy:
+    src: files/{{ file }}
+    dest: /etc/wireguard/wg0.conf
 
-#- name: Copy certificate files to server
-#  copy:
-#    src: files/{{ certificate }}
-#    dest: /etc/openvpn/server/{{ certificate }}
-#  become: yes
+- name: Enable the WireGuard Service
+  ansible.builtin.service:
+    name: wg-quick@wg0.service
+    state: enabled
+  become: yes
 
-#- name: Copy conf files to server
-#  copy:
-#    src: files/{{ conf }}
-#    dest: /etc/openvpn/server/server.conf
-#  become: yes
-
-#- name: Hack to force the new service
-#  raw: "systemctl enable -f openvpn-server@server.service"
-#  become: yes
-
-#- name: Start service openvpn, if not started
-#  ansible.builtin.service:
-#    name: openvpn-server@server.service
-#    state: started
-#  become: yes
+- name: Start the WireGuard Service
+  ansible.builtin.service:
+    name: wg-quick@wg0.service
+    state: started
+  become: yes

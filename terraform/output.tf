@@ -45,3 +45,13 @@ AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 20
 EOF
 }
+
+output "wgNodeHub_conf" {
+  value = <<EOF
+[Interface]
+Address = 10.10.9.1/24
+ListenPort = 50000
+PrivateKey = ${file("${path.module}/../wireguard_configs/wgHub.key")}
+SaveConfig = true
+EOF
+}

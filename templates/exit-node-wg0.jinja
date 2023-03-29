@@ -1,0 +1,12 @@
+[Interface]
+Address = {{ INGRESS_VPN_PRIV_IP }}/32
+PrivateKey = {{ INGRESS_VPN_PRIV_KEY }}
+SaveConfig = true
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT
+ListenPort = 50000
+
+
+[Peer]
+PublicKey = {{ EXIT_NODE_PUB_KEY }}
+AllowedIPs = {{ INGRESS_NODE_IP }}/32, 10.10.9.0/24

@@ -23,5 +23,11 @@ variable "aws_region" {
 variable "node_nums" {
   description = "The number of exit nodes"
   type = number
-  default = 1
+  default = {{ NUMS }}
+}
+
+variable "vpn_hostname" {
+  description = "Hostname for the VPN Ingress Node"
+  type = string
+  default = "vpn-agress.niblr.local"
 }

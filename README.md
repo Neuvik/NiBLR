@@ -45,3 +45,9 @@ moses,ecdsa-sha2-nistp256 sshkey location
 ```
 
 ## TODO
+
+## Credits
+
+- The folks at WWHF sponsored the event that created ProxyCannon-NG back in 2018 and I think that's something that should be noted!
+- The ProxyCannon-NG team with their repo found here: [https://github.com/proxycannon/proxycannon-ng](https://github.com/proxycannon/proxycannon-ng)
+
