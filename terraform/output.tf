@@ -1,22 +1,3 @@
-#output "client_conf" {
-#  value = <<EOF
-#client
-#dev tun
-#proto udp
-#remote ${aws_instance.aws_ingress_vpn.public_ip} 1194 
-#persist-key
-#persist-tun
-#verb 3
-#remote-cert-tls server
-#tls-crypt ta.key
-#auth SHA256
-#ca ca.crt
-#cert client1.crt
-#key client1.key
-#cipher AES-256-GCM
-#EOF
-#}
-
 resource "local_file" "aws_ingress_vpn" {
   content = templatefile("${path.module}/templates/inventory.tmpl", {
     cat      = "aws-ingress-vpn",
@@ -53,5 +34,18 @@ Address = 10.10.9.1/24
 ListenPort = 50000
 PrivateKey = ${file("${path.module}/../wireguard_configs/wgHub.key")}
 SaveConfig = true
+EOF
+}
+
+output "final_text" {
+  value = <<EOF
+-------------------------------------------------------------------------------
+Thank you for using NiBLR, here is the final output for your notes:
+
+Created Ingress Node with IP of: ${aws_instance.aws_ingress_vpn.public_ip}
+The IP Addresses of each of the individual ansible nodes will be found in:
+
+The Ansible Inventory List.k
+-------------------------------------------------------------------------------
 EOF
 }
