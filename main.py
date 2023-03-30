@@ -141,7 +141,7 @@ def main():
     parser.add_argument("--setup", action="store_true", help="Setup the system from scratch", default = False)
     parser.add_argument("--destroy", action="store_true", help="This will run terraform destroy", default = False)
     parser.add_argument("--debug", action="store_true", help="Turns on debugging and screen output", default = False)
-    parser.add_argument("-c", "--count", dest="count", help="How many exit nodes do you want? Default is 2", default = 2)
+    parser.add_argument("-c", "--count", dest="count", type=int, help="How many exit nodes do you want? Default is 2", default = 2)
     parser.add_argument("-t", "--timer", dest="t", help="This is only to be used for debugging, this will set the countdown timer between the exiting of terraform and the start of Ansible. Default is 300 seconds", default = 300, type=int)
     # parse arguments
     args = parser.parse_args()
@@ -182,8 +182,7 @@ def main():
 
     logging.info(f"[+] Going into generator variables now")
     generate_variables(args)
-
-    #os.system("cd terraform; terraform apply -auto-approve")
+    
     try:
         tf = Terraform(working_dir="./terraform")
         print(f"[+] Running terraform fmt")
@@ -228,13 +227,6 @@ ${stderr}
         args.t -= 1
 
     try:
-        
-        #while iterator:
-        #    print(iterator)
-        #    cmd = f"cd terraform; terraform output -raw node_num{iterator}_config > ../ansible/roles/exit_nodes/files/node{iterator}.conf"
-        #    print(cmd)
-        #    os.system(cmd)
-        #    iterator -= 1
         
         ansiblerun = ansible_runner.run(private_data_dir=ANSIBLE_DIRECTORY, playbook="playbook.yml")
         print(f"Running ansible now, the status is: {ansiblerun.status}: {ansiblerun.rc}")
