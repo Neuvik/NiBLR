@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-#
-# (c) Neuvik 2023
-#
-
 import argparse
 import os.path
 import logging
