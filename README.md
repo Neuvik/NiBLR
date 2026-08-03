@@ -2,9 +2,30 @@
 
 ## Getting started
 
+### Prerequisites
+
+You need Python 3 and pip3 installed:
+
+**macOS:**
+```
+brew install python3
+```
+
+**Debian/Ubuntu:**
+```
+sudo apt update && sudo apt install python3 python3-pip -y
+```
+
+**RHEL/Fedora:**
+```
+sudo dnf install python3 python3-pip -y
+```
+
+### Installation
+
 1. Clone this repo
-2. run `pip3 install -r requirements.txt`
-3. Currently we have pinned the argparse to require specific settings so run the `./setup.sh` manually to setup the initial system.
+2. Install Python dependencies: `pip3 install -r requirements.txt`
+3. Run `./setup.sh <number_of_exit_nodes>` to set up the initial system (installs Terraform, WireGuard, and generates keys).
 4. To run the system you need to specify some flags, -o, -i, and -r. See the how to or examples.
    1. `python3 main.py -o operator.csv -i operator_ips.txt -r us-east-1`
 

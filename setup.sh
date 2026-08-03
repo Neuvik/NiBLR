@@ -4,11 +4,11 @@ set -eu
 
 export TERRAFORM_VERSION="1.4.2"
 export OS="$(uname)"
-export TERRAFORM_INSTALLED="$(which terraform)"
+export TERRAFORM_INSTALLED="$(which terraform 2>/dev/null || true)"
 #export EASYRSA_INSTALLED="$(which easyrsa)"
 #export OPENVPN_INSTALLED="$(which openvpn)"
 export CURDIR=$(pwd)
-export WIREGUARD_TOOLS=$(which wg)
+export WIREGUARD_TOOLS="$(which wg 2>/dev/null || true)"
 
 #if [ "$OS" = "Darwin" ]; then 
   #export RSADIR=/usr/local/etc/pki
@@ -35,14 +35,14 @@ if [ "$OS" = "Darwin" ]; then
 fi
 
 if [ "$OS" = "Linux" ]; then
-  if [ ! = "$TERRAFORM_INSTALLED" ]; then
+  if [ ! "$TERRAFORM_INSTALLED" ]; then
     if [ -f /etc/debian_version ]; then
       wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
       echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
       sudo apt update && sudo apt install terraform -y
     fi
   fi
-  if [ ! "$WIREGUARD_TOOLS "]; then
+  if [ ! "$WIREGUARD_TOOLS" ]; then
     apt install wireguard -y
   fi
   #if [ ! "$EASYRSA_INSTALLED" ]; then
