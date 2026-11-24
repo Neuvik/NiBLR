@@ -40,10 +40,11 @@ func checkSlot(slot int) error {
 
 // ExitParams configures one exit.
 type ExitParams struct {
-	Slot        int
-	PrivateKey  string // exit's WireGuard private key
-	HubPublic   string // hub's WireGuard public key
-	HubEndpoint string // hub public IP
+	Slot         int
+	PrivateKey   string // exit's WireGuard private key
+	HubPublic    string // hub's WireGuard public key
+	HubEndpoint  string // hub public IP
+	LeaseMinutes int    // if >0 the exit shuts itself down (and so is terminated) after this long
 }
 
 // ExitCloudInit renders cloud-config for an exit: it dials the hub (so the exit's own public IP may
@@ -109,7 +110,7 @@ runcmd:
   - systemctl enable --now niblr-exit-nat.service
   - systemctl enable --now wg-quick@wg-hub.service
   # slot ` + s + `: a lease — if this box is shut down from inside it is terminated, never left stopped
-`, nil
+` + lease(p.LeaseMinutes), nil
 }
 
 // Cmd is one argv to run on the hub (no shell involved, so nothing to escape).
@@ -151,4 +152,11 @@ func HubExitDown(slot int) ([]Cmd, error) {
 		{"ip", "route", "flush", "table", t},
 		{"ip", "link", "del", Iface(slot)},
 	}, nil
+}
+
+func lease(min int) string {
+	if min <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("  - shutdown -P +%d\n", min)
 }

@@ -20,6 +20,8 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "dev":
+		dev(os.Args[2:])
 	case "init":
 		fs := flag.NewFlagSet("init", flag.ExitOnError)
 		env := fs.String("env", "default", "environment name")

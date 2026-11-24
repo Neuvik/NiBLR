@@ -42,6 +42,8 @@ type Config struct {
 	SubnetID    string
 	SecurityGrp string
 	DefaultSize string // instance type when ExitSpec.Size is empty
+	// InstanceProfile optionally attaches an IAM instance profile (name) to exits, e.g. for SSM access in dev.
+	InstanceProfile string
 }
 
 type Provider struct {
@@ -118,6 +120,9 @@ func (p *Provider) CreateExit(ctx context.Context, s provider.ExitSpec) (provide
 			{ResourceType: types.ResourceTypeNetworkInterface, Tags: t},
 		},
 		InstanceInitiatedShutdownBehavior: types.ShutdownBehaviorTerminate, // lease: a shutdown inside the box frees it
+	}
+	if p.cfg.InstanceProfile != "" {
+		in.IamInstanceProfile = &types.IamInstanceProfileSpecification{Name: &p.cfg.InstanceProfile}
 	}
 	out, err := p.api.RunInstances(ctx, in)
 	if err != nil {
