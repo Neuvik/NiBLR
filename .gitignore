@@ -55,3 +55,9 @@ wireguard_configs/*
 
 ansible/roles/exit_nodes/files/*
 ansible/roles/wireguard_hub/files/*.conf
+
+# prototype rig (local keys, terraform state/providers)
+prototype/aws/.terraform/
+prototype/aws/.terraform.lock.hcl
+prototype/aws/*.tfstate*
+prototype/aws/*.tfvars
