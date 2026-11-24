@@ -26,6 +26,7 @@ type NetAPI interface {
 	DescribeSecurityGroups(ctx context.Context, in *ec2.DescribeSecurityGroupsInput, opts ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
 	CreateSecurityGroup(ctx context.Context, in *ec2.CreateSecurityGroupInput, opts ...func(*ec2.Options)) (*ec2.CreateSecurityGroupOutput, error)
 	AuthorizeSecurityGroupIngress(ctx context.Context, in *ec2.AuthorizeSecurityGroupIngressInput, opts ...func(*ec2.Options)) (*ec2.AuthorizeSecurityGroupIngressOutput, error)
+	RevokeSecurityGroupIngress(ctx context.Context, in *ec2.RevokeSecurityGroupIngressInput, opts ...func(*ec2.Options)) (*ec2.RevokeSecurityGroupIngressOutput, error)
 }
 
 // Network is what `niblr init` produces and the provider needs.
@@ -37,8 +38,11 @@ type Network struct {
 const (
 	vpcCIDR    = "10.77.0.0/16"
 	subnetCIDR = "10.77.0.0/24"
-	// WireGuard port the hub listens on (operators and exits both dial it).
-	WGPort = 51820
+	// The hub listens on one WireGuard port per interface: operators on WGPortFrom, exit slot N on
+	// ExitPortBase+N. All inside the range the hub security group opens.
+	WGPortFrom   = 51000
+	WGPortTo     = 51999
+	ExitPortBase = 51100
 )
 
 func tagSpec(rt types.ResourceType, env, name string) []types.TagSpecification {
@@ -141,39 +145,51 @@ func EnsureNetwork(ctx context.Context, api NetAPI, env, az string) (Network, er
 	}
 
 	// Security groups: exits accept nothing inbound (they dial the hub); the hub accepts only WireGuard.
-	if n.ExitSG, err = ensureSG(ctx, api, env, n.VPCID, pre+"-exit", "NiBLR exits: no inbound", 0); err != nil {
+	if n.ExitSG, err = ensureSG(ctx, api, env, n.VPCID, pre+"-exit", "NiBLR exits: no inbound", false); err != nil {
 		return n, err
 	}
-	if n.HubSG, err = ensureSG(ctx, api, env, n.VPCID, pre+"-hub", "NiBLR hub: WireGuard only", WGPort); err != nil {
+	if n.HubSG, err = ensureSG(ctx, api, env, n.VPCID, pre+"-hub", "NiBLR hub: WireGuard only", true); err != nil {
 		return n, err
 	}
 	return n, nil
 }
 
-func ensureSG(ctx context.Context, api NetAPI, env, vpc, name, desc string, udpPort int32) (string, error) {
+func ensureSG(ctx context.Context, api NetAPI, env, vpc, name, desc string, wireguard bool) (string, error) {
 	d, err := api.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{Filters: envFilters(env,
 		types.Filter{Name: strp("vpc-id"), Values: []string{vpc}},
 		types.Filter{Name: strp("group-name"), Values: []string{name}})})
 	if err != nil {
 		return "", fmt.Errorf("find sg %s: %w", name, err)
 	}
+	var id string
 	if len(d.SecurityGroups) > 0 {
-		return *d.SecurityGroups[0].GroupId, nil
+		id = *d.SecurityGroups[0].GroupId
+	} else {
+		o, err := api.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{GroupName: &name, Description: &desc, VpcId: &vpc, TagSpecifications: tagSpec(types.ResourceTypeSecurityGroup, env, name)})
+		if err != nil {
+			return "", fmt.Errorf("create sg %s: %w", name, err)
+		}
+		id = *o.GroupId
 	}
-	o, err := api.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{GroupName: &name, Description: &desc, VpcId: &vpc, TagSpecifications: tagSpec(types.ResourceTypeSecurityGroup, env, name)})
-	if err != nil {
-		return "", fmt.Errorf("create sg %s: %w", name, err)
-	}
-	if udpPort != 0 {
-		_, err = api.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{GroupId: o.GroupId, IpPermissions: []types.IpPermission{{
-			IpProtocol: strp("udp"), FromPort: int32p(udpPort), ToPort: int32p(udpPort),
+	if wireguard {
+		// Always (re)assert the rule: adding is idempotent, and this repairs groups made by older versions.
+		_, err = api.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{GroupId: &id, IpPermissions: []types.IpPermission{{
+			IpProtocol: strp("udp"), FromPort: int32p(WGPortFrom), ToPort: int32p(WGPortTo),
 			IpRanges: []types.IpRange{{CidrIp: strp("0.0.0.0/0"), Description: strp("WireGuard")}},
 		}}})
 		if err != nil && !isCode(err, "InvalidPermission.Duplicate") {
-			return "", fmt.Errorf("open wireguard port on %s: %w", name, err)
+			return "", fmt.Errorf("open wireguard ports on %s: %w", name, err)
+		}
+		// Close the single-port rule an earlier version created.
+		_, err = api.RevokeSecurityGroupIngress(ctx, &ec2.RevokeSecurityGroupIngressInput{GroupId: &id, IpPermissions: []types.IpPermission{{
+			IpProtocol: strp("udp"), FromPort: int32p(51820), ToPort: int32p(51820),
+			IpRanges: []types.IpRange{{CidrIp: strp("0.0.0.0/0")}},
+		}}})
+		if err != nil && !isCode(err, "InvalidPermission.NotFound") {
+			return "", fmt.Errorf("close old port on %s: %w", name, err)
 		}
 	}
-	return *o.GroupId, nil
+	return id, nil
 }
 
 func isCode(err error, code string) bool {

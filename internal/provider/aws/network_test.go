@@ -95,3 +95,7 @@ func TestEnsureNetworkCreatesTaggedThenIsIdempotent(t *testing.T) {
 		t.Fatalf("second run created things: before=%+v after=%+v", before, *s)
 	}
 }
+
+func (s *netStub) RevokeSecurityGroupIngress(context.Context, *ec2.RevokeSecurityGroupIngressInput, ...func(*ec2.Options)) (*ec2.RevokeSecurityGroupIngressOutput, error) {
+	return &ec2.RevokeSecurityGroupIngressOutput{}, nil
+}
