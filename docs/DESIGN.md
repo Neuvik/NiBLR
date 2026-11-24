@@ -93,6 +93,13 @@ If `join` is run with cloud credentials and no environment exists, it creates on
 3. Stub the second provider's signatures during step 1 to catch an AWS-shaped interface early.
 4. Delete the legacy Python/Terraform/Ansible once the AWS slice is proven.
 
+## Shared AWS account (decided: the account is shared, not dedicated)
+
+See `docs/IAM-aws.md`. The hub may only create inside NiBLR's own VPC/subnet/SG and only touch instances tagged
+`niblr-managed=true` (and `niblr-env=<its env>`). The reconciler must NEVER list-then-delete anything that lacks
+those tags, even if it looks like a stray. Hard caps (`max-exits`, budget alarm) protect shared quota and spend.
+Do not use the default VPC. The IAM policy is a sketch and has not been validated against a real account.
+
 ## Operator client (Linux and Windows operators)
 
 `niblr join` writes a WireGuard config and brings the tunnel up using the official client on each OS.
