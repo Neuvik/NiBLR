@@ -93,8 +93,18 @@ If `join` is run with cloud credentials and no environment exists, it creates on
 3. Stub the second provider's signatures during step 1 to catch an AWS-shaped interface early.
 4. Delete the legacy Python/Terraform/Ansible once the AWS slice is proven.
 
+## Operator client (Linux and Windows operators)
+
+`niblr join` writes a WireGuard config and brings the tunnel up using the official client on each OS.
+Config always routes `0.0.0.0/0, ::/0` and sets `DNS=` to the hub, so nothing leaks around the tunnel.
+
+* Windows: WireGuard for Windows; `niblr` installs the tunnel service (`wireguard.exe /installtunnelservice`,
+  needs an admin prompt). With `0.0.0.0/0, ::/0` the app's "block untunneled traffic" kill-switch is active.
+* Linux: `wg-quick` with PostUp/PreDown rules that REJECT anything not leaving through the tunnel (wg-quick has no
+  kill-switch by default), plus IPv6 and DNS. Needs `wireguard-tools`.
+* Neither is tested yet. Windows in particular needs a real run before the kill-switch is trusted.
+
 ## Open
 
 * Invite token format (one-time WG key + enrollment API), and hub credential story for non-home clouds (static tokens on the hub: scope tightly).
-* Target operator OSes for the client.
 * Second provider (DigitalOcean planned).
