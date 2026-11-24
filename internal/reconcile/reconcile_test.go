@@ -87,3 +87,11 @@ func TestPlanIsIdempotentAfterApplying(t *testing.T) {
 		t.Fatalf("second plan must be empty, got %+v", b)
 	}
 }
+
+func TestBrokenExitIsDeletedAndItsSlotRecreated(t *testing.T) {
+	// A stopped instance keeps costing money; it must be cleaned up, not ignored.
+	a := Plan(2, []provider.Exit{ex("s", 1, provider.StateBroken, 0), ex("b", 2, provider.StateRunning, 0)})
+	if !reflect.DeepEqual(a.DeleteIDs, []string{"s"}) || !reflect.DeepEqual(a.CreateSlots, []int{1}) {
+		t.Fatalf("%+v", a)
+	}
+}

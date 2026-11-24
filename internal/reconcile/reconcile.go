@@ -21,7 +21,7 @@ func (a Actions) Empty() bool { return len(a.CreateSlots) == 0 && len(a.DeleteID
 // Plan computes actions for desired slots 1..want given the exits found by tag.
 //
 // Rules:
-//   - Exits in state gone are ignored (already dying).
+//   - Exits in state gone are ignored (already dying). Broken ones (e.g. stopped, still billed) are deleted.
 //   - Slots outside 1..want are deleted (scale down, or garbage).
 //   - If a slot has several live exits (a retried create that was not idempotent), keep the OLDEST
 //     (it is the one most likely already enrolled in the pool) and delete the rest.
@@ -31,6 +31,10 @@ func Plan(want int, found []provider.Exit) Actions {
 	var del []string
 	for _, e := range found {
 		if e.State == provider.StateGone {
+			continue
+		}
+		if e.State == provider.StateBroken {
+			del = append(del, e.ID) // delete it; its slot (if otherwise empty) is recreated below
 			continue
 		}
 		if e.Slot < 1 || e.Slot > want {

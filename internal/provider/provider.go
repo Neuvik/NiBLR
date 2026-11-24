@@ -32,7 +32,8 @@ type State string
 const (
 	StatePending State = "pending"
 	StateRunning State = "running"
-	StateGone    State = "gone" // terminating/terminated/failed: ignore, will not come back
+	StateBroken  State = "broken" // exists but unusable (e.g. stopped): still costs money, must be deleted and replaced
+	StateGone    State = "gone"   // terminating/terminated: ignore, already on its way out
 )
 
 // Exit is an exit as discovered from the provider by tag (there is no state file).
