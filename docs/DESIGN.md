@@ -138,3 +138,51 @@ Config always routes `0.0.0.0/0, ::/0` and sets `DNS=` to the hub, so nothing le
 * **Known limits:** the hub is cattle, so a rebuilt hub means re-inviting operators (its enrollment state lives on its
   disk); there is no revoke command yet (an operator can be removed with `wg set wg-op peer <pub> remove` and by editing
   `enroll.json`); invites cannot be minted from the admin's workstation yet.
+
+## Roadmap: beyond one cloud, beyond L3 (direction from the project owner; nothing here is built yet)
+
+Target test matrix: **L3 nodes in AWS, Azure and GCP; HTTPS/SOCKS5 workers in AWS Lambda and GCP serverless.**
+Items marked *(verify)* are my understanding of the platforms and must be checked against current docs and a real
+account before anything is built on them.
+
+### More node clouds (same data plane, new `Provider` implementations)
+* One hub, exits in any cloud: exits already dial the hub over the internet, so the hub does not care where they live.
+  Mixed-cloud pools also diversify the source networks, which suits the "look like several users" goal.
+* **GCP:** instances.insert takes a request id (idempotent) and labels at create time. A shutdown from inside leaves the
+  VM `TERMINATED` (still exists, still bills disks), so use the "broken" state plus reconciler deletion, or a
+  termination action of DELETE where available *(verify)*. Ephemeral external IP per VM. `hub-ip` exits do not fit GCP.
+* **Azure:** PUT is idempotent by resource name, so derive the VM/NIC/public-IP names from the token. A stopped VM keeps
+  billing unless *deallocated*, so the lease must deallocate/delete rather than just shut down *(verify)*. A VM is
+  several resources (VM, NIC, public IP, disk): tag all at create and delete them together.
+* **Open design points:** (a) hub credentials for a *second* cloud: workload-identity federation from the hub's AWS role
+  is preferable to long-lived keys *(verify feasibility)*; (b) slot ownership across providers: slots must be globally
+  unique (they are conntrack marks), so assign each slot to a provider deterministically and let each provider's
+  reconciler see only its own slots; (c) per-cloud IAM scoping equivalent to `docs/IAM-aws.md`.
+
+### Workers: HTTPS / SOCKS5 without a VM
+Workers are a different shape from nodes: no WireGuard, no slot, no hub in the data path. A new interface
+(`WorkerProvider`: deploy / list / delete, same create-time tags/labels and lease rules) rather than overloading `Provider`.
+The operator runs a local SOCKS5/HTTP listener (`niblr proxy`, on 127.0.0.1) which picks a worker per new connection
+(random over the healthy set, exactly the same rotation idea) and forwards over an authenticated HTTPS transport.
+
+* **GCP (Cloud Run / functions gen2):** supports HTTP/2 and WebSockets *(verify)*, so a worker can be a real TCP relay:
+  local SOCKS5 -> WebSocket -> worker -> target. That gives genuine SOCKS5/CONNECT semantics (TCP only, no UDP/ICMP).
+  Egress is Google's shared pool by default; a stable egress address needs VPC egress plus Cloud NAT *(verify)*.
+* **AWS Lambda:** cannot accept raw TCP, and a Function URL is plain HTTPS request/response, so a Lambda worker is an
+  **HTTP(S) fetch relay** (the worker makes the request on the client's behalf), not a SOCKS5 server and not a CONNECT
+  tunnel *(verify; response streaming may help with large bodies)*. Payload/duration limits apply. Source addresses come
+  from AWS's shared Lambda pool and are not controllable. Cheap and rotating, but only for HTTP(S) testing, and only
+  where the client lets us terminate TLS at the worker (so the operator's tool sees the worker's TLS, not the target's).
+  Be explicit about this limit in the operator docs.
+* **Security (critical):** a public function that proxies is an open relay. Every worker must require a signed,
+  short-lived token (minted from the same invite/enrollment system) and refuse private/metadata destinations, as the hub
+  does. Workers are scoped, tagged and leased like VMs.
+* **Pool health:** probe each worker end to end (fetch a known URL through it); drop failures from the pool; same
+  fail-closed rule (no healthy worker means the local proxy refuses connections, never connecting directly).
+
+### Suggested order
+1. GCP node provider (smallest delta; proves the second-cloud credential story and provider-owned slots).
+2. Azure node provider.
+3. Worker protocol, local `niblr proxy`, and the GCP Cloud Run TCP-over-WebSocket worker.
+4. Lambda HTTP(S) fetch worker, with its limits documented.
+Each step needs credentials/accounts for that cloud, which I do not have yet; I will ask before creating anything.
