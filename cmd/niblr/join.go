@@ -20,7 +20,7 @@ func applier() client.Applier {
 	return client.Applier{
 		GOOS: runtime.GOOS, Dir: configDir(), IsAdmin: isAdmin,
 		Run: func(name string, args ...string) (string, error) {
-			out, err := exec.Command(name, args...).CombinedOutput()
+			out, err := exec.Command(name, args...).CombinedOutput() // #nosec G204 -- fixed tool names (wg-quick, wireguard.exe), no shell
 			return string(out), err
 		},
 		Has:    func(n string) bool { _, err := exec.LookPath(n); return err == nil },
@@ -93,7 +93,7 @@ func status() {
 			continue
 		}
 		b, _ := io.ReadAll(io.LimitReader(r.Body, 64))
-		r.Body.Close()
+		_ = r.Body.Close()
 		seen = append(seen, strings.TrimSpace(string(b)))
 		cl.CloseIdleConnections()
 	}

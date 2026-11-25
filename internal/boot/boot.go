@@ -11,6 +11,18 @@ import (
 	"strings"
 )
 
+// ValidKey reports whether k is a well-formed WireGuard (X25519) key in base64.
+func ValidKey(k string) error {
+	raw, err := base64.StdEncoding.DecodeString(k)
+	if err != nil || len(raw) != 32 {
+		return fmt.Errorf("not a valid WireGuard key")
+	}
+	if _, err := ecdh.X25519().NewPublicKey(raw); err != nil {
+		return fmt.Errorf("not a valid WireGuard key")
+	}
+	return nil
+}
+
 const (
 	OperatorNet  = "10.10.9.0/24"
 	HubOpAddr    = "10.10.9.1"
@@ -137,8 +149,10 @@ func HubExitUp(slot int, exitPublic, hubKeyFile string) ([]Cmd, error) {
 	if err := checkSlot(slot); err != nil {
 		return nil, err
 	}
-	if exitPublic == "" {
-		return nil, fmt.Errorf("exit public key required")
+	// The key may come from a cloud tag, which is not trusted input: it must be a real WireGuard key before it
+	// reaches a command line.
+	if err := ValidKey(exitPublic); err != nil {
+		return nil, fmt.Errorf("exit public key: %w", err)
 	}
 	i, t := Iface(slot), strconv.Itoa(1000+slot)
 	return []Cmd{

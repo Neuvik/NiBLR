@@ -32,7 +32,7 @@ func (b Base) EnsureBase(ctx context.Context) error {
 		return err
 	}
 	if b.ConnMax > 0 { // best effort: the module may not be loaded yet
-		b.R.Run(ctx, "sysctl", "-qw", fmt.Sprintf("net.netfilter.nf_conntrack_max=%d", b.ConnMax))
+		_, _ = b.R.Run(ctx, "sysctl", "-qw", fmt.Sprintf("net.netfilter.nf_conntrack_max=%d", b.ConnMax))
 	}
 	ifs, err := run("wg", "show", "interfaces")
 	if err != nil {

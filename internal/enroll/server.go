@@ -62,10 +62,9 @@ type Server struct {
 	path  string
 	Now   func() time.Time
 
-	mu      sync.Mutex
-	st      state
-	fails   []time.Time
-	enrolls string // host:port to put in invites
+	mu    sync.Mutex
+	st    state
+	fails []time.Time
 }
 
 // NewServer loads (or creates) state in dir.
@@ -97,11 +96,11 @@ func (s *Server) lockState() (unlock func(), err error) {
 		return nil, err
 	}
 	if err := flock(f); err != nil {
-		f.Close()
+		_ = f.Close()
 		s.mu.Unlock()
 		return nil, err
 	}
-	unlock = func() { funlock(f); f.Close(); s.mu.Unlock() }
+	unlock = func() { funlock(f); _ = f.Close(); s.mu.Unlock() }
 	if b, err := os.ReadFile(s.path); err == nil {
 		var st state
 		if json.Unmarshal(b, &st) == nil {
@@ -208,7 +207,7 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	return mux
 }

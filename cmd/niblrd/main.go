@@ -171,7 +171,7 @@ func reconcileOnce(ctx context.Context, m *hub.Manager, opIface string, lastHeal
 type execRunner struct{}
 
 func (execRunner) Run(ctx context.Context, argv ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, argv[0], argv[1:]...).CombinedOutput()
+	out, err := exec.CommandContext(ctx, argv[0], argv[1:]...).CombinedOutput() // #nosec G204 -- argv is built by internal/boot from validated values (keys, ints), never a shell
 	if err != nil {
 		return string(out), fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}
@@ -182,7 +182,7 @@ func newManager(want int, env, region, ami, subnet, exitSG, profile, size, hubIP
 	if ami == "" || subnet == "" || exitSG == "" || hubIP == "" {
 		return nil, fmt.Errorf("managed mode needs --ami, --subnet, --exit-sg and --hub-ip")
 	}
-	raw, err := os.ReadFile(keyFile)
+	raw, err := os.ReadFile(keyFile) // #nosec G304 -- path is the admin's own --key-file flag
 	if err != nil {
 		return nil, fmt.Errorf("read hub key %s: %w", keyFile, err)
 	}
@@ -264,7 +264,7 @@ func fmtIDs(ids []int) string {
 }
 
 func enrollConfig(hubIP, keyFile string) (enroll.Config, error) {
-	raw, err := os.ReadFile(keyFile)
+	raw, err := os.ReadFile(keyFile) // #nosec G304 -- path is the admin's own --key-file flag
 	if err != nil {
 		return enroll.Config{}, fmt.Errorf("read hub key %s: %w", keyFile, err)
 	}
@@ -298,7 +298,7 @@ func startEnrollment(ctx context.Context, base hub.Base, dir, listen, hubIP, key
 	if err != nil {
 		return err
 	}
-	go func() { <-ctx.Done(); hs.Close() }()
+	go func() { <-ctx.Done(); _ = hs.Close() }()
 	go func() {
 		if err := hs.Serve(ln); err != nil && ctx.Err() == nil {
 			log.Printf("niblrd: enrollment server stopped: %v", err)
@@ -321,7 +321,9 @@ func inviteCmd(args []string) {
 	hubIP := fs.String("hub-ip", "", "this hub's public IP")
 	keyFile := fs.String("key-file", "/etc/niblr/hub.key", "hub WireGuard private key file")
 	port := fs.Int("enroll-port", 8443, "enrollment port")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		os.Exit(2)
+	}
 	if *name == "" || *hubIP == "" {
 		fmt.Fprintln(os.Stderr, "usage: niblrd invite --name NAME --hub-ip IP [--ttl 24h]")
 		os.Exit(2)

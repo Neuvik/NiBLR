@@ -48,7 +48,8 @@ func TestExitCloudInit(t *testing.T) {
 }
 
 func TestHubUpDownAreInverseAndOrdered(t *testing.T) {
-	up, err := HubExitUp(2, "EXITPUB", "/etc/niblr/hub.key")
+	_, exitPub, _ := GenKey()
+	up, err := HubExitUp(2, exitPub, "/etc/niblr/hub.key")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,8 +64,13 @@ func TestHubUpDownAreInverseAndOrdered(t *testing.T) {
 	if down[1][0] != "conntrack" || down[1][3] != "2" {
 		t.Errorf("must purge conntrack marks before reuse: %v", down[1])
 	}
-	if _, err := HubExitUp(251, "x", "k"); err == nil {
+	if _, err := HubExitUp(251, exitPub, "k"); err == nil {
 		t.Error("slot 251 must be rejected")
+	}
+	for _, bad := range []string{"", "x", "--help", "EXITPUB", exitPub + " extra", "AAAA"} {
+		if _, err := HubExitUp(2, bad, "k"); err == nil {
+			t.Errorf("malformed key %q must be rejected before it reaches a command line", bad)
+		}
 	}
 }
 

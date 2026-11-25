@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -35,13 +34,15 @@ func Enroll(ctx context.Context, inv Invite, pub string, now time.Time) (Result,
 		return Result{}, err
 	}
 	tr := &http.Transport{TLSClientConfig: &tls.Config{
-		MinVersion:         tls.VersionTLS13,
-		InsecureSkipVerify: true, // we verify by pin below, not by CA
-		VerifyPeerCertificate: func(raw [][]byte, _ [][]*x509.Certificate) error {
-			if len(raw) == 0 {
+		MinVersion: tls.VersionTLS13,
+		// We verify by certificate pin, not by CA. VerifyConnection (unlike VerifyPeerCertificate) also runs
+		// on resumed sessions, so the pin can never be skipped. There is no session cache either.
+		InsecureSkipVerify: true, // #nosec G402 -- verified by certificate pin in VerifyConnection below
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 {
 				return errors.New("no certificate")
 			}
-			h := sha256.Sum256(raw[0])
+			h := sha256.Sum256(cs.PeerCertificates[0].Raw)
 			if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(h[:])), []byte(inv.Pin)) != 1 {
 				return errors.New("pin mismatch")
 			}
@@ -77,5 +78,5 @@ func Enroll(ctx context.Context, inv Invite, pub string, now time.Time) (Result,
 	if r.HubKey != inv.HubKey {
 		return Result{}, errors.New("the server's key doesn't match your invite. Don't continue; tell whoever gave you the invite")
 	}
-	return Result{Address: r.Address, HubKey: r.HubKey, WG: r.WG, DNS: r.DNS, MTU: r.MTU}, nil
+	return Result(r), nil
 }

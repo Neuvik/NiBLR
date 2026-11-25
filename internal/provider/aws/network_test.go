@@ -12,7 +12,6 @@ import (
 type netStub struct {
 	vpcs, igws, subnets, sgs int
 	routes                   int
-	otherVpc                 bool // an untagged, foreign VPC that must be ignored
 	vpcTagged                bool
 }
 

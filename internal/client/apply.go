@@ -68,7 +68,7 @@ func (a Applier) Join(p Params) error {
 		out, err = a.Run("wg-quick", "up", a.confPath())
 	}
 	if err != nil {
-		a.Remove(a.confPath()) // never leave a half-configured machine with a key on disk
+		_ = a.Remove(a.confPath()) // never leave a half-configured machine with a key on disk
 		return fmt.Errorf("couldn't start the connection: %s", strings.TrimSpace(firstLine(out, err)))
 	}
 	return nil

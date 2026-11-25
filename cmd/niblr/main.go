@@ -33,7 +33,9 @@ func main() {
 		env := fs.String("env", "default", "environment name")
 		region := fs.String("region", "us-west-1", "AWS region")
 		az := fs.String("az", "", "availability zone (default: <region>a)")
-		fs.Parse(os.Args[2:])
+		if err := fs.Parse(os.Args[2:]); err != nil {
+			os.Exit(2)
+		}
 		if *az == "" {
 			*az = *region + "a"
 		}

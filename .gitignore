@@ -61,3 +61,12 @@ prototype/aws/.terraform/
 prototype/aws/.terraform.lock.hcl
 prototype/aws/*.tfstate*
 prototype/aws/*.tfvars
+
+# NiBLR: never commit runtime state, keys or rig artifacts
+*.key
+*.pem
+enroll.json
+niblr.conf
+*.conf.local
+rig*/
+bin/

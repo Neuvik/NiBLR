@@ -1,0 +1,26 @@
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: go vet ./...
+      - run: go test ./...
+      - run: GOOS=windows go build ./...
+      - run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          staticcheck ./...
+          gosec -quiet -exclude-dir=prototype ./...
+          govulncheck ./...
+      - name: Secret scan (tree and history)
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@latest
+          gitleaks git . --log-opts="--all" --no-banner

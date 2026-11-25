@@ -56,7 +56,7 @@ func NewProber(src, target string) *Prober {
 		ProbeTarget:     target,
 		Now:             time.Now,
 		Run: func(ctx context.Context, name string, args ...string) ([]byte, error) {
-			return exec.CommandContext(ctx, name, args...).CombinedOutput()
+			return exec.CommandContext(ctx, name, args...).CombinedOutput() // #nosec G204 -- fixed tool names (ping) with values the daemon builds, never a shell
 		},
 	}
 }

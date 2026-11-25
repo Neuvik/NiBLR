@@ -17,11 +17,10 @@ import (
 
 // kernel is a fake hub: it interprets the same commands the real hub would run.
 type kernel struct {
-	mu    sync.Mutex
-	ifs   map[string]string // iface -> peer pub
-	log   []string
-	fail  string // substring of a command that should fail
-	order []string
+	mu   sync.Mutex
+	ifs  map[string]string // iface -> peer pub
+	log  []string
+	fail string // substring of a command that should fail
 }
 
 func newKernel() *kernel { return &kernel{ifs: map[string]string{}} }
@@ -76,7 +75,7 @@ func newMgr(t *testing.T, want int) (*Manager, *fake.Fake, *kernel) {
 	n := 0
 	tm := reconcile.Template{Env: "e", Render: func(slot int) (string, map[string]string, error) {
 		n++
-		return "ci", map[string]string{"pub": fmt.Sprintf("PUB-%d-%d", slot, n)}, nil
+		return "ci", map[string]string{"pub": testKey()}, nil
 	}}
 	return &Manager{P: f, Env: "e", Want: want, Tmpl: tmpl(tm), R: k, KeyFile: "/k"}, f, k
 }
@@ -269,4 +268,10 @@ func TestAddOperatorOnlyTouchesThatPeer(t *testing.T) {
 	if len(k.log) != 1 || k.log[0] != "wg set wg-op peer PUB allowed-ips 10.10.9.5/32" {
 		t.Fatalf("%v", k.log)
 	}
+}
+
+// testKey returns a real, well-formed WireGuard public key (hub commands reject anything else).
+func testKey() string {
+	_, pub, _ := boot.GenKey()
+	return pub
 }

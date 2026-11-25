@@ -1,11 +1,13 @@
 module niblr
 
-go 1.24
+go 1.26
+
+toolchain go1.26.11
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.21
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.350.0
-	github.com/aws/smithy-go v1.28.9
+	github.com/aws/smithy-go v1.28.10
 )
 
 require (

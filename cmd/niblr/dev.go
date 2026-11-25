@@ -34,7 +34,9 @@ func dev(args []string) {
 	profile := fs.String("profile", "", "IAM instance profile for exits")
 	lease := fs.Int("lease", 0, "exit lease minutes")
 	id := fs.String("id", "", "instance id")
-	fs.Parse(args[1:])
+	if err := fs.Parse(args[1:]); err != nil {
+		os.Exit(2)
+	}
 
 	switch args[0] {
 	case "genkey":
@@ -45,7 +47,9 @@ func dev(args []string) {
 		if len(args) < 2 {
 			fail("hubcmd needs up|down")
 		}
-		fs.Parse(args[2:])
+		if err := fs.Parse(args[2:]); err != nil {
+			os.Exit(2)
+		}
 		var cs []boot.Cmd
 		var err error
 		if args[1] == "up" {
