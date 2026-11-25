@@ -56,8 +56,9 @@ Without this role, the hub cannot create exits.
 * Give it an Elastic IP, a fixed public address. Every exit has the hub's address built in, so a hub that gets a new
   address strands its existing exits.
 * Add your own security group that allows SSH only from your address, never from `0.0.0.0/0`.
-* Tag the hub yourself (`niblr-managed=true` and your environment). NiBLR tags the exits and the network but not the
-  hub.
+* Tag the hub if you want to find it later, but never give it the exit environment's tag. The daemon deletes any
+  instance tagged `niblr-managed=true` with its own `niblr-env` that is not a valid exit, so a hub with those tags would
+  terminate itself. Use a different environment value, for example `niblr-env=myteam-hub`.
 
 On the hub:
 
@@ -134,6 +135,7 @@ them.
 ## Known gaps
 
 * No command to revoke a tester
+* The hub does not block tester traffic to private and metadata addresses
 * Invites can be created only on the hub
 * The Windows client has not been tested on a real Windows machine
 * IPv6 behavior has not been measured

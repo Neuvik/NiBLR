@@ -9,7 +9,7 @@
 
 ### One tunnel in, many addresses out
 
-*Named after Nibbler from Futurama, a small creature that does a lot more than it looks like it can.*
+*Named after Nibbler from Futurama.*
 
 `Go 1.26` · `WireGuard` · `Linux and Windows testers` · `AWS only for now`
 
@@ -31,8 +31,8 @@ connection that leaves from many public addresses and rotates them as the work g
 
 * It works for any IPv4 protocol, outbound only. Web, SSH, scanners, ping, and DNS all work with no per-tool settings.
   Exits accept no inbound connections, so reverse shells and callbacks do not work. IPv6 is blocked.
-* Each new connection picks a random healthy exit and stays on it until the connection ends, so logins and sessions
-  survive.
+* Each new connection picks a random healthy exit, and a single connection keeps its exit until it ends. A site that
+  ties a login to one source address can still drop a session that opens a second connection from another exit.
 * Deleting an exit gets you a fresh address. The hub builds a replacement without being asked.
 * If no exit is healthy, the hub drops new connections. They never leave from your own address.
 
@@ -116,7 +116,7 @@ details.
 Tested on real AWS, with scripts in `prototype/aws-go/`:
 
 * The pool built itself from nothing (three exits in about a minute in one run), and connections spread across all exits.
-* Rotation worked while traffic was running. The test allows up to 5 percent failed flows, and the run we recorded had none.
+* Rotation worked while traffic was running. The test allows up to 5 percent failed flows, and the last recorded run had none.
 * The hub rebuilt its tunnel interfaces from cloud tags after they were wiped.
 * Scale-down worked, and all 17 IAM permission checks passed.
 * A real tester join, the leak checks, the kill switch, and recovery worked on Ubuntu 24.04. A reused invite and a
@@ -130,11 +130,13 @@ Not tested yet:
   back to IPv4, has not been measured.
 * Replacing the hub VM itself. Only the interface rebuild was tested.
 * Heavy load near the connection-tracking limit.
+* Blocking tester traffic to private and metadata addresses. The hub does not do this yet, so a tester can reach
+  private addresses near the exits.
 * Revoking a tester. There is no command for it yet, and a rebuilt hub means re-inviting testers.
 
 ## Where it is going
 
-These are ideas, roughly in priority order. None are built, and the maintainers are still deciding which to keep.
+These are ideas, roughly in priority order. None are built.
 
 1. Exits in other clouds, starting with GCP and then Azure, using the same data path.
 2. A proxy mode (SOCKS5 and HTTPS) for people who do not want a full tunnel. Lightweight serverless workers (Lambda,
@@ -174,6 +176,6 @@ the tree and will be removed once the new version is proven. Do not use it.
 
 <div align="center">
 
-*Built by [Neuvik](https://neuvik.com). Good news, everyone: your traffic now comes from everywhere.*
+*Built by [Neuvik](https://neuvik.com).*
 
 </div>

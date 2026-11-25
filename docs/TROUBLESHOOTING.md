@@ -3,8 +3,8 @@
 This page lists the messages `niblr` prints and what to do about each one. Find your message in the first column and
 follow the third.
 
-One thing to know first. An invite works once. `niblr` now checks for administrator rights and for WireGuard before it
-uses your invite, so those two problems do not use it up. Any problem that appears after "Connecting to NiBLR..." can
+An invite works once. `niblr` checks for administrator rights and for WireGuard before it uses your invite, so those
+two problems do not use it up. Any problem that appears after "Connecting to NiBLR..." can
 mean the invite is used, and you may need a new one.
 
 ## Joining
@@ -17,6 +17,7 @@ mean the invite is used, and you may need a new one.
 | NiBLR needs to run as Administrator (Windows) | The window does not have administrator rights | Close it, open PowerShell with Run as administrator, and try the same invite again |
 | NiBLR needs administrator rights ... "sudo" (Linux) | The command did not run as administrator | Run it again with `sudo` in front |
 | WireGuard isn't installed | The VPN software NiBLR uses is missing | Install it as the message says, then try the same invite again |
+| NiBLR needs administrator rights to turn off the connection | You ran `leave` without administrator rights | Run it again with `sudo` (Linux) or in an Administrator PowerShell (Windows) |
 | you're already joined | A previous join is still active | Run `niblr leave`, then join with the new invite |
 | this invite has expired | Invites time out. This check uses your computer's clock | Check your clock, then ask for a new invite |
 | this invite isn't valid any more: it was already used or has expired | Invites work once | Ask for a new one |
@@ -60,8 +61,8 @@ for more exits or larger ones. Large downloads work but are slow.
 ### Some tools pause for several seconds before a site loads
 
 NiBLR blocks IPv6, the newer address type, because its exits only use IPv4. Some tools try IPv6 first and wait for it to
-time out before switching to IPv4. This is a known rough edge. Add `-4` to your command if the tool supports it, for
-example `curl -4` or `ping -4`. We have not yet measured how long the delay is on a machine that has both IPv4 and
+time out before switching to IPv4. Add `-4` to your command if the tool supports it, for
+example `curl -4` or `ping -4`. No one has measured how long the delay is on a machine that has both IPv4 and
 IPv6.
 
 ### A tool still shows my real address
@@ -116,8 +117,9 @@ scans to be slower because the exits are small.
 
 ### Does the address change on every request?
 
-No. Each new connection uses one exit and stays on it until the connection ends. This keeps logins and sessions
-working.
+No. Each new connection uses one exit and stays on it until the connection ends. A browser or tool often opens
+several connections for one session, though, so a site that ties a login to a single source address may drop your
+session when a new connection leaves from a different exit. There is no way to pin a target to one exit yet.
 
 ### How many addresses do I get?
 
@@ -133,5 +135,4 @@ No. Exits accept no incoming connections, so nothing on the internet can reach y
 
 ### Does it work from inside a corporate network?
 
-Only if your network allows outgoing UDP traffic to the hub's WireGuard ports (51000 to 51999) and TCP port 8443 for
-joining. If you are not sure, ask the network team or try it.
+Only if your network allows outgoing UDP traffic to the hub on port 51000 and TCP traffic on port 8443 (used for joining). If you are not sure, ask the network team or try it.

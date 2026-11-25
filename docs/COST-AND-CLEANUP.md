@@ -8,7 +8,7 @@
   risk.
 * The VPC, subnet, internet gateway, and security groups have no charge.
 
-We have not recorded current prices here. They change and vary by region, so check the AWS pricing page for your region
+Prices are not listed here. They change and vary by region, so check the AWS pricing page for your region
 and create a budget alarm before you start. Stopping an exit does not save money. A stopped instance still bills for its
 disk, and NiBLR treats a stopped exit as broken and replaces it.
 
@@ -19,7 +19,7 @@ disk, and NiBLR treats a stopped exit as broken and replaces it.
 * The hub's role can launch only small instance types into the NiBLR subnet.
 * Exits, their disks and network interfaces, and the network that `niblr init` creates carry the tag
   `niblr-managed=true`, so you can find them in the console or CLI. The hub, its IAM role, and its Elastic IP are not
-  tagged unless you tag them.
+  tagged. If you tag the hub, use a different `niblr-env` value than the exits, or the daemon will delete it.
 
 ## Full teardown
 
@@ -47,6 +47,7 @@ Work in this order.
    Both commands should print `0`. These filters only see tagged resources, so also check that the hub instance and its
    Elastic IP are gone. List key pairs and IAM roles whose names contain `niblr` as well.
 
-`prototype/aws-go/rig-down.sh` performs steps 1 to 3 for the test rig and runs similar checks. It leaves the network
-from `niblr init` in place. It is written for the test rig and deletes things by name, so read it before running it
+`prototype/aws-go/rig-down.sh` does the equivalent of steps 1 to 3 for the test rig, plus the rig's own test machines and
+key pair, and runs similar checks. It does not release an Elastic IP, and it leaves the network from `niblr init` in
+place. Run `niblr dev exit-list` before step 4, because it recreates the network if it is missing. It is written for the test rig and deletes things by name, so read it before running it
 anywhere else.

@@ -11,7 +11,7 @@ This page explains how NiBLR works today. [DESIGN.md](DESIGN.md) records the rea
 * A tester is a WireGuard peer (a client) on the network `10.10.9.0/24`. All of the tester's traffic goes to the hub.
 * An exit is a small cloud VM. Each exit connects to the hub, so it needs no inbound ports. It applies network address
   translation (NAT), so outbound traffic leaves from the exit's own public address.
-* The hub has one WireGuard interface per exit (`wg-eN`) and one for testers (`wg-op`).
+* The hub has one WireGuard interface per exit (`wg-eN`) and one for testers (`wg-op`, where `op` is short for operator, the project's older word for a tester).
 
 ## Choosing an exit
 

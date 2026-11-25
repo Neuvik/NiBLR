@@ -50,7 +50,7 @@ This design is proven locally and on AWS (see `prototype/`).
 * Per-flow rotation can break targets that pin sessions by source IP, so the rotation policy should be configurable.
   It is not configurable today.
 
-## Requirements the prototype confirmed
+## Requirements and open items
 
 Lifecycle:
 
@@ -143,11 +143,11 @@ the legacy Python, Terraform, and Ansible files.
 
 ## Roadmap
 
-This is planned and nothing here is built. The target test matrix is layer-3 nodes in AWS, Azure, and GCP, and
+This is planned and nothing here is built. The target test matrix is layer-3 exits in AWS, Azure, and GCP, and
 HTTPS and SOCKS5 workers in AWS Lambda and GCP serverless. Items marked *(verify)* are unconfirmed platform claims.
 Check them against current documentation and a real account before building on them.
 
-### More node clouds
+### More exit clouds
 
 Each new cloud is a new `Provider` implementation on the same data plane.
 
@@ -166,7 +166,7 @@ Each new cloud is a new `Provider` implementation on the same data plane.
 
 ### Workers: HTTPS and SOCKS5 without a VM
 
-Workers have a different shape from nodes. They use no WireGuard and no slot, and the hub does not carry their traffic
+Workers have a different shape from exits. They use no WireGuard and no slot, and the hub does not carry their traffic
 as a tunnel. They need a new interface (`WorkerProvider`, with deploy, list, and delete, and the same creation-time tags
 and lease rules) instead of overloading `Provider`.
 
@@ -209,27 +209,25 @@ This is the planned direction, and nothing in it has been tested. All platform c
 The hub should never hold long-lived keys for another cloud. It proves its own identity, which is its AWS instance
 role, and trades that for short-lived credentials in the other cloud. The direction matters.
 
-* From the hub on AWS to GCP (to create GCP nodes or call Cloud Run workers), use GCP Workload Identity Federation. A
+* From the hub on AWS to GCP (to create GCP exits or call Cloud Run workers), use GCP Workload Identity Federation. A
   workload identity pool trusts the hub's AWS role, and the hub exchanges a signed AWS identity for a short-lived Google
   token scoped to a service account that has only the roles NiBLR needs. This also lets Cloud Run keep unauthenticated
   invocation disallowed.
 * From the hub on AWS to Azure, use a federated credential on a managed identity or app registration, with the hub's
   identity as the issuer. This is more awkward with an AWS issuer than GCP's native AWS support.
 * From outside AWS into AWS, use AWS IAM Roles Anywhere, which turns an X.509 certificate into AWS credentials. It is
-  needed only if the hub or a node runs outside AWS and must call Lambda or EC2.
+  needed only if the hub or an exit runs outside AWS and must call Lambda or EC2.
 * Setup is a one-time step per cloud, done by someone with administrator rights there, with `niblr init` using the
   admin's own credentials. Each cloud gets a least-privilege service account or identity, equivalent to
   [IAM-aws.md](IAM-aws.md).
-* If federation proves impractical for a cloud, the fallback is a narrowly scoped key stored with mode 0600 on the hub,
-  plus the signed per-request token and destination block list on workers. That leaves a reachable endpoint that is
-  gated by a token.
-* Workers still verify a hub-signed token and refuse private and metadata destinations, so a stolen cloud credential
-  alone cannot turn a worker into an open relay.
+* If federation proves impractical for a cloud, the fallback is a narrowly scoped key stored with mode 0600 on the hub.
+  Workers then rely on the signed per-request token and destination block list, which leaves a reachable endpoint that
+  is gated by a token.
 
 ### Suggested order
 
-1. A GCP node provider. It is the smallest change and proves GCP Workload Identity Federation and provider-owned slots.
-2. An Azure node provider.
+1. A GCP exit provider. It is the smallest change and proves GCP Workload Identity Federation and provider-owned slots.
+2. An Azure exit provider.
 3. The worker protocol, hub-side proxy listener and proxy-only join, and the GCP Cloud Run TCP-over-WebSocket worker.
 4. The Lambda HTTP(S) fetch worker, with its limits documented.
 

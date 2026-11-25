@@ -5,8 +5,8 @@ test.
 
 ## Reporting a vulnerability
 
-Please do not open a public issue. Use GitHub's private vulnerability reporting under this repository's Security tab,
-or email the maintainers at Neuvik. A dedicated security address will be added here before the repository is published.
+Please do not open a public issue. Report vulnerabilities through GitHub's private vulnerability reporting, under this
+repository's Security tab.
 
 ## Secrets and credentials
 

@@ -7,7 +7,9 @@ see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 While you are joined, all of your computer's internet traffic goes through NiBLR and leaves from one of several public
 addresses. Each new connection (a page load, a scan connection, a login attempt) may use a different address. A
-connection that is already open keeps its address until it ends, so a login session does not break halfway through.
+connection that is already open keeps its address until it ends. A browser or tool often opens several connections for
+one session, so a site that ties a login to a single source address may log you out. There is no way to pin a target to
+one exit yet.
 
 Three words you will see:
 
@@ -26,8 +28,8 @@ You need three things.
 
 Only use NiBLR on engagements you are authorized for. See [ACCEPTABLE-USE.md](ACCEPTABLE-USE.md).
 
-Do the setup in the sections below before you run `niblr join`. An invite can be used only once, and a failure after
-the invite is accepted means you need a new one.
+`niblr join` checks for administrator rights and for WireGuard before it uses your invite, so those mistakes do not use
+it up. A failure after the message "Connecting to NiBLR..." can, and then you need a new invite.
 
 ## Linux
 
@@ -35,24 +37,31 @@ the invite is accepted means you need a new one.
    Kali, run `sudo apt install wireguard iptables resolvconf`. On other distributions, install the packages that
    provide `wg-quick`, `iptables`, and `ip6tables`, and a way for `wg-quick` to set DNS (`resolvconf` or
    `systemd-resolved`). NiBLR has been tested on Ubuntu 24.04 only.
-2. Run `wg --version`. If it prints a version, you are ready.
+2. Run `command -v wg-quick`. If it prints a path, you are ready.
 3. Do not run `join` over an SSH session or from a remote desktop. The firewall rule stops your computer from answering
    anything outside the tunnel, so an SSH or remote desktop session will drop.
-4. Join:
+4. Make the downloaded program runnable, and run it from the folder that holds it. For example, if it is in your
+   Downloads folder:
 
-       sudo niblr join niblr1:PASTE-YOUR-INVITE-HERE
+       cd ~/Downloads && chmod +x niblr
+
+   Use `./niblr` where the commands below say `niblr`, or move it to `/usr/local/bin` with
+   `sudo mv niblr /usr/local/bin/` so that plain `niblr` works.
+5. Join:
+
+       sudo ./niblr join niblr1:PASTE-YOUR-INVITE-HERE
 
    The program prints "Connecting to NiBLR..." and then a message that starts with "Joined."
-5. Check the connection. Use `sudo` here too, because without it `niblr status` cannot see the connection and says
+6. Check the connection. Use `sudo` here too, because without it `niblr status` cannot see the connection and says
    "Not joined" even when you are joined.
 
-       sudo niblr status
+       sudo ./niblr status
 
    A good answer looks like "Connected. Websites currently see you as: 203.0.113.10, 198.51.100.7". `status` opens a
    few separate connections, so you can see more than one address.
-6. Leave when you are done:
+7. Leave when you are done:
 
-       sudo niblr leave
+       sudo ./niblr leave
 
 ## Windows
 
@@ -63,7 +72,8 @@ the invite is accepted means you need a new one.
 
        cd $HOME\Downloads
 
-4. Join:
+4. Join. Windows may warn that the program is from an unknown publisher, because it is not signed. Continue only if
+   your admin gave it to you.
 
        .\niblr.exe join niblr1:PASTE-YOUR-INVITE-HERE
 
@@ -107,6 +117,8 @@ blocked one address, ask your admin to replace that exit. The replacement has a 
   you.
 * Your admin and the cloud provider running each exit can see your traffic. Treat NiBLR like any VPN you do not
   control, and do not send anything through it that you would not send through a third-party VPN.
+* NiBLR does not yet block your traffic to private and cloud metadata addresses, so do not rely on it to keep you out of
+  the network around the exits.
 * Connections only go outward. Exits accept nothing from the internet, so reverse shells and callbacks to your computer
   will not work.
 * NiBLR is slower than your normal connection because your traffic is encrypted and passes through two servers, the
