@@ -174,9 +174,19 @@ The operator runs a local SOCKS5/HTTP listener (`niblr proxy`, on 127.0.0.1) whi
   from AWS's shared Lambda pool and are not controllable. Cheap and rotating, but only for HTTP(S) testing, and only
   where the client lets us terminate TLS at the worker (so the operator's tool sees the worker's TLS, not the target's).
   Be explicit about this limit in the operator docs.
-* **Security (critical):** a public function that proxies is an open relay. Every worker must require a signed,
-  short-lived token (minted from the same invite/enrollment system) and refuse private/metadata destinations, as the hub
-  does. Workers are scoped, tagged and leased like VMs.
+* **Workers are private, never a public proxy (decided).** The hub fronts them; operators never hold cloud credentials:
+  * Operator side: a *proxy-only* join. Same invite and enrollment, but the WireGuard config routes only the hub's tunnel
+    address (10.10.9.1), not all traffic. The hub runs a SOCKS5/HTTP listener bound **only** to that address, so reaching
+    it requires a valid WireGuard key (the same trust model as the L3 path, and nothing is open to the internet).
+  * Hub side: per new connection, pick a healthy worker (random) and call it with the hub's own cloud identity.
+  * Worker side must reject anonymous callers by construction: **Lambda** is invoked through the Invoke API (no URL at
+    all), or a Function URL with `AuthType=AWS_IAM` if a URL is ever needed; **Cloud Run / functions** are deployed with
+    unauthenticated invocation disallowed so each call needs a Google-signed token the hub's service identity mints.
+  * Second layer: the hub also signs each request with a short-lived token the worker verifies, and workers refuse
+    private/RFC1918/metadata destinations, so a leaked cloud credential alone is not enough.
+  * Cost of this design: it is proxy-mode, so a tool that ignores its proxy setting exits from the operator's own address
+    (full L3 mode has no such leak and stays the default). For Lambda, HTTPS targets would need the hub to terminate TLS
+    (operators trust a hub CA, as with Burp-style proxies); Cloud Run's TCP relay keeps TLS end to end *(verify both)*.
 * **Pool health:** probe each worker end to end (fetch a known URL through it); drop failures from the pool; same
   fail-closed rule (no healthy worker means the local proxy refuses connections, never connecting directly).
 
