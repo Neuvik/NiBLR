@@ -21,6 +21,11 @@ applied again to the connection's later packets, so a connection never changes e
 `fwmark N` sends marked traffic to routing table `1000+N`, where N is the exit number, and that table's default route
 is the exit's tunnel. Replies return through the same tunnel, so each connection uses one exit in both directions.
 
+### Blocked destinations
+
+Before an exit is chosen, the hub drops new connections to private, link-local, and cloud metadata addresses (for example
+`10.0.0.0/8` and `169.254.169.254`). Without this, a tester could use an exit to reach the network around it.
+
 ### Failing closed
 
 A fallback routing rule for tester traffic ends in an unreachable route. When no exit is healthy, new connections are

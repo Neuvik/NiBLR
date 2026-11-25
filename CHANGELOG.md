@@ -22,6 +22,8 @@ removed. This release works end to end on AWS and has several known gaps, listed
 * A tester client that routes all IPv4 and IPv6 traffic into the tunnel, sends DNS through it, and on Linux blocks
   traffic outside it.
 * Optional exit leases (`--lease-minutes`), so a forgotten exit shuts itself down and terminates.
+* The hub drops new tester connections to private, link-local, and cloud metadata addresses, so an exit cannot be used
+  to reach the network around it.
 * A least-privilege IAM policy for the hub, safe for a shared AWS account (`docs/IAM-aws.md`).
 * Documentation: tester guide, admin guide, troubleshooting, cost and cleanup, acceptable use, architecture, and design
   notes.
@@ -34,13 +36,13 @@ removed. This release works end to end on AWS and has several known gaps, listed
 
 ### Security
 
+* Tester traffic to private and cloud metadata addresses is blocked at the hub.
 * Built with Go 1.26.11 to pick up fixes for known standard-library vulnerabilities.
 * The enrollment client verifies the hub's certificate pin on every connection, including resumed sessions.
 * A WireGuard key read from a cloud tag is validated before it reaches a command line.
 
 ### Known limitations
 
-* The hub does not block tester traffic to private and cloud metadata addresses.
 * The Windows client has not been tested on a real Windows machine. The Linux client has been tested on Ubuntu 24.04 only.
 * IPv6 is blocked rather than carried, and its behavior on a dual-stack machine has not been measured.
 * A rebuilt hub needs the same public address, and testers need new invites. There is no command to revoke a tester.

@@ -70,9 +70,10 @@ Security of the hub, which faces the internet:
   control policy and a budget alarm are the only hard ceiling.
 * `vm` exits use ephemeral public IPs because they connect outward. Elastic IPs are for the hub endpoint (and the
   `hub-ip` type). Each exit has the hub's address built in, so a hub that changes address strands its exits.
-* Not yet implemented: the hub does not block tester traffic to link-local and metadata addresses
-  (`169.254.169.254`, `168.63.129.16`), RFC1918, or CGNAT ranges. Testers could use an exit to reach private addresses
-  near it. IMDSv2 on the exits limits the metadata risk, but a drop rule in the mark chain is still planned.
+* The hub drops new tester flows to link-local and cloud metadata addresses (`169.254.169.254`, `168.63.129.16`),
+  RFC1918, CGNAT, loopback, multicast, and reserved ranges before it chooses an exit. Without this, a tester could use
+  an exit to reach private addresses next to it. The list is `PrivateRanges` in `internal/dataplane/rules.go`. It covers
+  IPv4 only, because the hub carries no IPv6. Established flows are not affected.
 
 Data plane traps:
 
@@ -137,8 +138,7 @@ Enrollment is built and works against a real hub on AWS.
 ## Status and order of work
 
 Built and tested on AWS: the data plane, the managed exit pool, rotation, enrollment, and the Linux client. Still to do
-on AWS: a revoke command, creating invites from the admin's workstation, blocking private and metadata destinations at
-the hub, measuring IPv6 behavior, testing on a real Windows machine, load testing near the conntrack limit, and removing
+on AWS: a revoke command, creating invites from the admin's workstation, measuring IPv6 behavior, testing on a real Windows machine, load testing near the conntrack limit, and removing
 the legacy Python, Terraform, and Ansible files.
 
 ## Roadmap

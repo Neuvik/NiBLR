@@ -117,8 +117,8 @@ blocked one address, ask your admin to replace that exit. The replacement has a 
   you.
 * Your admin and the cloud provider running each exit can see your traffic. Treat NiBLR like any VPN you do not
   control, and do not send anything through it that you would not send through a third-party VPN.
-* NiBLR does not yet block your traffic to private and cloud metadata addresses, so do not rely on it to keep you out of
-  the network around the exits.
+* NiBLR blocks connections to private addresses (such as `10.x.x.x` and `192.168.x.x`) and cloud metadata addresses. To
+  test an internal network, you need a different path.
 * Connections only go outward. Exits accept nothing from the internet, so reverse shells and callbacks to your computer
   will not work.
 * NiBLR is slower than your normal connection because your traffic is encrypted and passes through two servers, the

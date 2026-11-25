@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs ON the operator machine (as root, in the background): the kill switch cuts SSH, so results go to a file.
-# env: INV1 INV2 BADPIN HUBIP REALIP EXITS("ip ip ip")
+# env: INV1 INV2 BADPIN HUBIP REALIP EXITS("ip ip ip") TGPRIV (private address of a host in the same VPC)
 exec >/tmp/join-test.out 2>&1
 fail=0; check() { if eval "$2"; then echo "PASS  $1"; else echo "FAIL  $1"; fail=1; fi; }
 # dead-man: whatever happens, restore the machine after 25 minutes
@@ -28,6 +28,13 @@ n=$(echo $seen | tr ' ' '\n' | grep -c . ); check "every request answered" '[ $n
 d=$(echo $seen | tr ' ' '\n' | sort -u | grep -c .); echo "   distinct addresses: $d"; check "more than one exit address used" '[ $d -ge 2 ]'
 for a in $(echo $seen | tr ' ' '\n' | sort -u); do check "address $a is one of the exits" '[[ " $EXITS " == *" $a "* ]]'; done
 st=$(niblr status 2>&1); echo "   status: $st"; check "status reports connected" '[[ "$st" == Connected* ]]'
+
+echo "== 3b. private and metadata destinations are blocked at the hub; public ones still work"
+pub=$(myip); check "public traffic still works" '[ -n "$pub" ]'
+check "private VPC address is unreachable through the tunnel" '! ping -c2 -W2 "$TGPRIV" >/dev/null 2>&1'
+mc=$(curl -s -m 4 -o /dev/null -w '%{http_code}' http://169.254.169.254/latest/meta-data/ 2>/dev/null); echo "   metadata address answered: $mc"
+check "cloud metadata address is unreachable through the tunnel" '[ "$mc" = 000 ]'
+check "RFC1918 range 192.168.1.1 is unreachable through the tunnel" '! ping -c1 -W2 192.168.1.1 >/dev/null 2>&1'
 
 echo "== 4. DNS resolves through the tunnel; nothing but WireGuard leaves the physical interface"
 timeout 25 tcpdump -i $IFC -nn -Q out -l 'not arp and not (udp and dst host '$HUBIP' and dst port 51000)' > /tmp/leak.txt 2>/dev/null & TD=$!

@@ -35,6 +35,8 @@ connection that leaves from many public addresses and rotates them as the work g
   ties a login to one source address can still drop a session that opens a second connection from another exit.
 * Deleting an exit gets you a fresh address. The hub builds a replacement without being asked.
 * If no exit is healthy, the hub drops new connections. They never leave from your own address.
+* The hub also drops new connections to private and cloud metadata addresses, so an exit cannot be used to reach the
+  network around it.
 
 ## For testers
 
@@ -119,6 +121,8 @@ Tested on real AWS, with scripts in `prototype/aws-go/`:
 * Rotation worked while traffic was running. The test allows up to 5 percent failed flows, and the last recorded run had none.
 * The hub rebuilt its tunnel interfaces from cloud tags after they were wiped.
 * Scale-down worked, and all 17 IAM permission checks passed.
+* Traffic to private and cloud metadata addresses is blocked at the hub. A joined tester could not reach a private
+  address in the same VPC or the metadata address, though both answered when reached directly.
 * A real tester join, the leak checks, the kill switch, and recovery worked on Ubuntu 24.04. A reused invite and a
   wrong certificate were both refused.
 
@@ -130,8 +134,6 @@ Not tested yet:
   back to IPv4, has not been measured.
 * Replacing the hub VM itself. Only the interface rebuild was tested.
 * Heavy load near the connection-tracking limit.
-* Blocking tester traffic to private and metadata addresses. The hub does not do this yet, so a tester can reach
-  private addresses near the exits.
 * Revoking a tester. There is no command for it yet, and a rebuilt hub means re-inviting testers.
 
 ## Where it is going

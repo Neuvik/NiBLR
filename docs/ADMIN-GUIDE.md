@@ -135,7 +135,6 @@ them.
 ## Known gaps
 
 * No command to revoke a tester
-* The hub does not block tester traffic to private and metadata addresses
 * Invites can be created only on the hub
 * The Windows client has not been tested on a real Windows machine
 * IPv6 behavior has not been measured
