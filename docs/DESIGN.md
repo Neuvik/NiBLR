@@ -113,7 +113,7 @@ Config always routes `0.0.0.0/0, ::/0` and sets `DNS=` to the hub, so nothing le
 
 ## Open
 
-* Invite token format (one-time WG key + enrollment API), and hub credential story for non-home clouds (static tokens on the hub: scope tightly).
+* Hub credential story for non-home clouds: decided, see "Cross-cloud credentials" below (federation, no long-lived keys).
 * Second provider (DigitalOcean planned).
 
 ## Operator enrollment (built; unit-tested, not yet run on a real hub)
@@ -190,8 +190,25 @@ The operator runs a local SOCKS5/HTTP listener (`niblr proxy`, on 127.0.0.1) whi
 * **Pool health:** probe each worker end to end (fetch a known URL through it); drop failures from the pool; same
   fail-closed rule (no healthy worker means the local proxy refuses connections, never connecting directly).
 
+### Cross-cloud credentials (decided direction; nothing tested yet, all platform claims *(verify)*)
+The hub never holds long-lived keys for another cloud. It proves its own identity (its AWS instance role) and trades that for
+short-lived credentials in the other cloud. Direction matters:
+* **Hub (AWS) -> GCP** (create GCP nodes, call Cloud Run workers): GCP **Workload Identity Federation**. A workload identity
+  pool trusts the hub's AWS role; the hub exchanges a signed AWS identity for a short-lived Google token, scoped to a service
+  account with only the roles NiBLR needs. This also lets Cloud Run keep unauthenticated invocation disallowed.
+* **Hub (AWS) -> Azure** (create Azure nodes, call Azure workers): a **federated credential** on a managed identity / app
+  registration, with the hub's identity as the issuer. More fiddly with an AWS issuer than GCP's native AWS support.
+* **Something outside AWS -> AWS** (only if the hub or a node ever runs outside AWS and must call Lambda or EC2): AWS
+  **IAM Roles Anywhere**, which turns an X.509 certificate into AWS credentials. Not needed while the hub stays in AWS.
+* **Setup:** one-time per cloud, by someone with admin rights there, done by `niblr init` with the admin's own credentials
+  (as the AWS network setup is). Each cloud gets a least-privilege service account/identity, equivalent to `docs/IAM-aws.md`.
+* **Fallback** if federation proves impractical for a cloud: a narrowly scoped key stored 0600 on the hub, plus the signed
+  per-request token and destination denylist on workers, accepting a reachable-but-token-gated endpoint.
+* **Not a replacement for the second layer:** workers still verify a hub-signed token and refuse private/metadata
+  destinations, so a stolen cloud credential alone cannot turn a worker into an open relay.
+
 ### Suggested order
-1. GCP node provider (smallest delta; proves the second-cloud credential story and provider-owned slots).
+1. GCP node provider (smallest delta; proves GCP Workload Identity Federation and provider-owned slots).
 2. Azure node provider.
 3. Worker protocol, local `niblr proxy`, and the GCP Cloud Run TCP-over-WebSocket worker.
 4. Lambda HTTP(S) fetch worker, with its limits documented.
