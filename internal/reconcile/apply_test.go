@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -109,3 +110,23 @@ var errTest = errString("api throttled")
 type errString string
 
 func (e errString) Error() string { return string(e) }
+
+func TestRenderGivesEachSlotItsOwnBootConfigAndMeta(t *testing.T) {
+	f := fake.New()
+	tm := tmpl
+	tm.Render = func(slot int) (string, map[string]string, error) {
+		return fmt.Sprintf("#cloud-config\n# slot %d", slot), map[string]string{"pub": fmt.Sprintf("PUB%d", slot)}, nil
+	}
+	if _, _, err := Converge(context.Background(), f, tm, 3, "r1"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := f.ListExits(context.Background(), "eng1")
+	if len(got) != 3 {
+		t.Fatalf("want 3 exits, got %d", len(got))
+	}
+	for _, e := range got {
+		if e.Meta["pub"] != fmt.Sprintf("PUB%d", e.Slot) {
+			t.Errorf("slot %d lost its metadata: %v", e.Slot, e.Meta)
+		}
+	}
+}

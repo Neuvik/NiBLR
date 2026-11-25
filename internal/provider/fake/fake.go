@@ -43,7 +43,7 @@ func (f *Fake) CreateExit(_ context.Context, s provider.ExitSpec) (provider.Exit
 	f.created++
 	e := provider.Exit{
 		ID: fmt.Sprintf("i-%04d", f.next), Env: s.Env, Slot: s.Slot,
-		PublicIP: fmt.Sprintf("198.51.100.%d", f.next), State: provider.StateRunning, Created: f.Now(),
+		PublicIP: fmt.Sprintf("198.51.100.%d", f.next), State: provider.StateRunning, Created: f.Now(), Meta: s.Meta,
 	}
 	f.exits[e.ID] = e
 	if s.Token != "" {

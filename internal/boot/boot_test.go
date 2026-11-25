@@ -67,3 +67,14 @@ func TestHubUpDownAreInverseAndOrdered(t *testing.T) {
 		t.Error("slot 251 must be rejected")
 	}
 }
+
+func TestPublicKeyMatchesGenKey(t *testing.T) {
+	priv, pub, _ := GenKey()
+	got, err := PublicKey(priv + "\n")
+	if err != nil || got != pub {
+		t.Fatalf("got %q err %v want %q", got, err, pub)
+	}
+	if _, err := PublicKey("nope"); err == nil {
+		t.Fatal("garbage must be rejected")
+	}
+}

@@ -24,6 +24,9 @@ type ExitSpec struct {
 	Region    string
 	Size      string
 	CloudInit string // boot config: brings up the WireGuard tunnel that dials the hub
+	// Meta is small non-secret data stored with the exit AT CREATE TIME (as tags), so the hub can rebuild
+	// its view after a restart with no state file. Keys are short lowercase words, e.g. "pub".
+	Meta map[string]string
 }
 
 // State of an exit as the provider reports it.
@@ -44,6 +47,7 @@ type Exit struct {
 	PublicIP string
 	State    State
 	Created  time.Time
+	Meta     map[string]string
 }
 
 // Provider is implemented once per cloud.

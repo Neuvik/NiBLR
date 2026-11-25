@@ -14,6 +14,9 @@ type Template struct {
 	Region    string
 	Size      string
 	CloudInit string
+	// Render, if set, builds per-slot boot config and metadata (e.g. a fresh WireGuard key per exit) and
+	// takes precedence over CloudInit.
+	Render func(slot int) (cloudInit string, meta map[string]string, err error)
 }
 
 // Apply executes a plan through any provider.
@@ -31,9 +34,17 @@ func Apply(ctx context.Context, p provider.Provider, t Template, round string, a
 	}
 	var created []provider.Exit
 	for _, slot := range a.CreateSlots {
+		ci, meta := t.CloudInit, map[string]string(nil)
+		if t.Render != nil {
+			var err error
+			if ci, meta, err = t.Render(slot); err != nil {
+				errs = append(errs, fmt.Errorf("render slot %d: %w", slot, err))
+				continue
+			}
+		}
 		e, err := p.CreateExit(ctx, provider.ExitSpec{
 			Env: t.Env, Slot: slot, Token: fmt.Sprintf("%s/%s/%d", t.Env, round, slot),
-			Region: t.Region, Size: t.Size, CloudInit: t.CloudInit,
+			Region: t.Region, Size: t.Size, CloudInit: ci, Meta: meta,
 		})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("create slot %d: %w", slot, err))

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -23,6 +24,19 @@ func GenKey() (priv, pub string, err error) {
 		return "", "", err
 	}
 	return base64.StdEncoding.EncodeToString(k.Bytes()), base64.StdEncoding.EncodeToString(k.PublicKey().Bytes()), nil
+}
+
+// PublicKey derives the WireGuard public key from a base64 private key.
+func PublicKey(priv string) (string, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(priv))
+	if err != nil {
+		return "", fmt.Errorf("private key is not base64: %w", err)
+	}
+	k, err := ecdh.X25519().NewPrivateKey(raw)
+	if err != nil {
+		return "", fmt.Errorf("not a valid WireGuard key: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(k.PublicKey().Bytes()), nil
 }
 
 // Link addressing for exit slot N (1..250): a /30 whose .1 is the hub and .2 is the exit.

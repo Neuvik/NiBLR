@@ -75,7 +75,19 @@ func clientToken(token string) string {
 	return "niblr-" + hex.EncodeToString(h[:])[:32]
 }
 
-func tags(env string, slot int) []types.Tag {
+const metaPrefix = "niblr-meta-"
+
+func tags(env string, slot int, meta ...map[string]string) []types.Tag {
+	t := baseTags(env, slot)
+	for _, m := range meta {
+		for k, v := range m {
+			t = append(t, types.Tag{Key: strp(metaPrefix + k), Value: strp(v)})
+		}
+	}
+	return t
+}
+
+func baseTags(env string, slot int) []types.Tag {
 	return []types.Tag{
 		{Key: strp(TagManaged), Value: strp("true")},
 		{Key: strp(provider.TagEnv), Value: strp(env)},
@@ -96,7 +108,7 @@ func (p *Provider) CreateExit(ctx context.Context, s provider.ExitSpec) (provide
 	if size == "" {
 		size = p.cfg.DefaultSize
 	}
-	t := tags(s.Env, s.Slot)
+	t := tags(s.Env, s.Slot, s.Meta)
 	in := &ec2.RunInstancesInput{
 		ImageId:      &p.cfg.AMI,
 		InstanceType: types.InstanceType(size),
@@ -204,6 +216,14 @@ func toExit(i types.Instance) provider.Exit {
 		slot = 0 // unparseable slot => stray; the reconciler deletes slot<1
 	}
 	e := provider.Exit{Env: tg[provider.TagEnv], Slot: slot, State: mapState(i.State)}
+	for k, v := range tg {
+		if len(k) > len(metaPrefix) && k[:len(metaPrefix)] == metaPrefix {
+			if e.Meta == nil {
+				e.Meta = map[string]string{}
+			}
+			e.Meta[k[len(metaPrefix):]] = v
+		}
+	}
 	if i.InstanceId != nil {
 		e.ID = *i.InstanceId
 	}

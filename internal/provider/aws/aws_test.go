@@ -216,3 +216,11 @@ func TestNewValidatesConfig(t *testing.T) {
 		t.Fatal("must require Env")
 	}
 }
+
+func TestMetaRoundTripsThroughTags(t *testing.T) {
+	ts := tags("eng1", 4, map[string]string{"pub": "KEY="})
+	e := toExit(types.Instance{Tags: ts, State: &types.InstanceState{Name: types.InstanceStateNameRunning}})
+	if e.Slot != 4 || e.Meta["pub"] != "KEY=" {
+		t.Fatalf("meta lost: %+v", e)
+	}
+}
