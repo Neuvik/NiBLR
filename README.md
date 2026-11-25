@@ -138,6 +138,20 @@ Ideas, in rough order. **None are built yet**, and the owner is still deciding w
 
 The reasoning for each is written up in [`docs/DESIGN.md`](docs/DESIGN.md).
 
+## Documentation
+
+| Read this | If you are |
+|---|---|
+| [Operator guide](docs/OPERATOR-GUIDE.md) | a tester joining NiBLR (Linux or Windows) |
+| [Troubleshooting and FAQ](docs/TROUBLESHOOTING.md) | seeing an error message, or wondering how something works |
+| [Admin guide](docs/ADMIN-GUIDE.md) | standing up and running an environment |
+| [Cost and cleanup](docs/COST-AND-CLEANUP.md) | worried about the bill or tearing down |
+| [Acceptable use](docs/ACCEPTABLE-USE.md) | anyone, before first use |
+| [Architecture](docs/ARCHITECTURE.md) | a developer, or just curious how it works |
+| [IAM policy](docs/IAM-aws.md) | reviewing the hub's AWS permissions |
+| [Design notes](docs/DESIGN.md) | wondering why it is built this way, and where it is going |
+| [Contributing](CONTRIBUTING.md) | changing the code |
+
 ## Repository map
 
 ```
