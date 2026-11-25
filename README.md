@@ -11,7 +11,7 @@
 
 *Named after Nibbler from Futurama.*
 
-`v0.1.0` · `Go 1.26` · `WireGuard` · `Linux and Windows testers` · `AWS only for now`
+`v2026.11.0` · `Go 1.26` · `WireGuard` · `Linux and Windows testers` · `AWS only for now`
 
 </div>
 

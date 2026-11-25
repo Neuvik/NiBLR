@@ -1,12 +1,12 @@
 # Changelog
 
 All notable changes to NiBLR are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and versions follow [Semantic Versioning](https://semver.org/). Before 1.0.0, a minor version (0.x) may change commands,
-flags, or the invite format, and the notes will say when it does.
+and versions are numbered by date, as `YEAR.MONTH.PATCH` (see [docs/RELEASING.md](docs/RELEASING.md)). A release that
+changes commands, flags, or the invite format says so under "Breaking" in its notes.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-11-25
+## [2026.11.0] - 2026-11-25
 
 First public preview. NiBLR is a complete rewrite of the earlier Python, Terraform, and Ansible tool, which has been
 removed. This release works end to end on AWS and has several known gaps, listed below.
@@ -48,5 +48,5 @@ removed. This release works end to end on AWS and has several known gaps, listed
   connections through different exits.
 * The hub is set up by hand. There is no installer or machine image.
 
-[Unreleased]: https://github.com/Neuvik/NiBLR/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Neuvik/NiBLR/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Neuvik/NiBLR/compare/v2026.11.0...HEAD
+[2026.11.0]: https://github.com/Neuvik/NiBLR/releases/tag/v2026.11.0

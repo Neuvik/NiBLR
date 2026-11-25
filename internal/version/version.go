@@ -13,7 +13,7 @@ var (
 	Date    = ""
 )
 
-// String returns a one-line description, for example "niblr v0.1.0 (3f2a1bc, 2026-11-25)".
+// String returns a one-line description, for example "niblr v2026.11.0 (3f2a1bc, 2026-11-25)".
 func String(program string) string {
 	v, c, d := Version, Commit, Date
 	if c == "" {

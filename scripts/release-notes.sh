@@ -1,6 +1,6 @@
 #!/bin/bash
 # Prints the CHANGELOG.md section for one version, for use as GitHub release notes.
-# Usage: scripts/release-notes.sh v0.1.0
+# Usage: scripts/release-notes.sh v2026.11.0
 set -euo pipefail
 v=${1#v}
 awk -v v="$v" '

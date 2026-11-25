@@ -39,5 +39,5 @@ jobs:
         run: |
           scripts/release-notes.sh "$GITHUB_REF_NAME" > notes.md
           test -s notes.md || { echo "CHANGELOG.md has no section for $GITHUB_REF_NAME"; exit 1; }
-          PRE=""; case "$GITHUB_REF_NAME" in v0.*|*-*) PRE="--prerelease";; esac
+          PRE=""; case "$GITHUB_REF_NAME" in *-*) PRE="--prerelease";; esac
           gh release create "$GITHUB_REF_NAME" dist/* --title "NiBLR $GITHUB_REF_NAME" --notes-file notes.md $PRE

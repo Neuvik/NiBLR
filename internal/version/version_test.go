@@ -6,9 +6,9 @@ import (
 )
 
 func TestStringUsesInjectedValues(t *testing.T) {
-	Version, Commit, Date = "v1.2.3", "abcdef1", "2026-01-02"
+	Version, Commit, Date = "v2026.11.0", "abcdef1", "2026-01-02"
 	defer func() { Version, Commit, Date = "dev", "", "" }()
-	if got, want := String("niblr"), "niblr v1.2.3 (abcdef1, 2026-01-02)"; got != want {
+	if got, want := String("niblr"), "niblr v2026.11.0 (abcdef1, 2026-01-02)"; got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
 }
