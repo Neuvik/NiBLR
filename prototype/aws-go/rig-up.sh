@@ -40,16 +40,11 @@ HUB=$(ip_of $hub); CL=$(ip_of $client); TG=$(ip_of $target); printf 'HUB=%s\nCL=
 SSH="ssh -i key -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=8"; SCP="scp -q -i key -o BatchMode=yes"
 for h in $HUB $CL $TG; do for t in $(seq 40); do $SSH ubuntu@$h true 2>/dev/null && break; sleep 5; done; done
 for h in $HUB $CL $TG; do $SSH ubuntu@$h 'sudo apt-get update -qq >/dev/null 2>&1; sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wireguard nftables conntrack >/dev/null 2>&1' & done; wait
-read HK HP < <($N dev genkey); read CK CP < <($N dev genkey)
+read HK HP < <($N dev genkey)
 # hub
 $SCP /tmp/niblrd-linux ubuntu@$HUB:/tmp/niblrd; echo $HK | $SSH ubuntu@$HUB 'sudo mkdir -p /etc/niblr && sudo tee /etc/niblr/hub.key >/dev/null && sudo chmod 600 /etc/niblr/hub.key && sudo install -m755 /tmp/niblrd /usr/local/bin/niblrd'
 $SSH ubuntu@$HUB "sudo bash -s" <<EOT
 set -e
-sysctl -qw net.ipv4.ip_forward=1 net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.default.rp_filter=0 net.netfilter.nf_conntrack_max=262144
-ip link add wg-op type wireguard; ip addr add 10.10.9.1/24 dev wg-op
-wg set wg-op private-key /etc/niblr/hub.key listen-port 51000 peer $CP allowed-ips 10.10.9.2/32
-ip link set wg-op up; sysctl -qw net.ipv4.conf.wg-op.rp_filter=0
-ip route replace unreachable default table 200; ip rule add from 10.10.9.0/24 table 200 priority 200
 cat >/etc/systemd/system/niblrd.service <<UNIT
 [Unit]
 Description=NiBLR hub daemon
@@ -64,18 +59,9 @@ WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload; systemctl enable --now niblrd >/dev/null 2>&1; echo hub ready
 EOT
-# client
-echo $CK | $SSH ubuntu@$CL 'sudo tee /etc/niblr-client.key >/dev/null; sudo chmod 600 /etc/niblr-client.key'
-$SSH ubuntu@$CL "sudo bash -s" <<EOT
-set -e
-GW=\$(ip -o -4 route show default | awk '{print \$3}'); IFC=\$(ip -o -4 route show default | awk '{print \$5}')
-ip link add wg-op type wireguard; ip addr add 10.10.9.2/24 dev wg-op
-wg set wg-op private-key /etc/niblr-client.key peer $HP endpoint $HUB:51000 allowed-ips 0.0.0.0/0 persistent-keepalive 5
-ip link set wg-op up
-ip route replace $MYIP/32 via \$GW dev \$IFC; ip route replace $HUB/32 via \$GW dev \$IFC; ip route replace 169.254.169.254/32 via \$GW dev \$IFC
-ip route replace 0.0.0.0/1 dev wg-op; ip route replace 128.0.0.0/1 dev wg-op
-systemd-run --unit niblr-deadman --on-active=180min /sbin/ip link del wg-op >/dev/null 2>&1; echo client ready
-EOT
-$SCP $DIR/../dataplane/test.py ubuntu@$CL:/tmp/test.py; $SCP $DIR/../dataplane/target.py ubuntu@$TG:/tmp/target.py
+# client: real operator machine. Only needs wireguard + iptables; joins with `niblr join`.
+$SSH ubuntu@$CL 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iptables dnsutils tcpdump >/dev/null 2>&1; true'
+$SCP /tmp/niblr-bin ubuntu@$CL:/tmp/niblr; $SSH ubuntu@$CL 'sudo install -m755 /tmp/niblr /usr/local/bin/niblr'
+$SCP $DIR/../dataplane/target.py ubuntu@$TG:/tmp/target.py
 $SSH ubuntu@$TG 'sudo systemd-run --unit niblr-target python3 /tmp/target.py >/dev/null 2>&1; head -c 30000000 /dev/urandom > /tmp/big.bin; sha256sum /tmp/big.bin | cut -c1-16 > /tmp/big.sum; sudo systemd-run --unit niblr-big --working-directory=/tmp python3 -m http.server 8081 >/dev/null 2>&1; echo target ready'
 echo RIG UP
