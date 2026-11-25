@@ -31,18 +31,9 @@ func (a Applier) wgTool() string {
 	return "wg-quick"
 }
 
-// Join writes the config and starts the tunnel. Every failure is explained for a non-technical person.
-func (a Applier) Join(p Params) error {
-	var conf string
-	var err error
-	if a.GOOS == "windows" {
-		conf, err = Windows(p)
-	} else {
-		conf, err = Linux(p)
-	}
-	if err != nil {
-		return err
-	}
+// Preflight checks everything that can be checked before the invite is used. Invites work once, so these
+// checks must pass BEFORE enrolling: a failure afterwards would burn the invite.
+func (a Applier) Preflight() error {
 	if !a.IsAdmin() {
 		if a.GOOS == "windows" {
 			return errors.New("NiBLR needs to run as Administrator. Close this window, right-click PowerShell, choose \"Run as administrator\", and try again")
@@ -58,6 +49,24 @@ func (a Applier) Join(p Params) error {
 	if a.Exists(a.confPath()) {
 		return errors.New("you're already joined. To use a new invite, run \"niblr leave\" first")
 	}
+	return nil
+}
+
+// Join writes the config and starts the tunnel. Every failure is explained for a non-technical person.
+func (a Applier) Join(p Params) error {
+	if err := a.Preflight(); err != nil {
+		return err
+	}
+	var conf string
+	var err error
+	if a.GOOS == "windows" {
+		conf, err = Windows(p)
+	} else {
+		conf, err = Linux(p)
+	}
+	if err != nil {
+		return err
+	}
 	if err := a.Write(a.confPath(), []byte(conf), 0o600); err != nil {
 		return fmt.Errorf("couldn't save the connection settings: %w", err)
 	}
@@ -69,7 +78,7 @@ func (a Applier) Join(p Params) error {
 	}
 	if err != nil {
 		_ = a.Remove(a.confPath()) // never leave a half-configured machine with a key on disk
-		return fmt.Errorf("couldn't start the connection: %s", strings.TrimSpace(firstLine(out, err)))
+		return fmt.Errorf("couldn't start the connection: %s. This invite has now been used, so ask for a new one", strings.TrimSpace(firstLine(out, err)))
 	}
 	return nil
 }

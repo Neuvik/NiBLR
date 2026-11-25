@@ -81,6 +81,10 @@ func TestFailuresAreExplainedInPlainLanguageAndDoNothing(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: got %v, want mention of %q", c.goos, err, c.want)
 		}
+		// Preflight runs before the one-time invite is used, so it must give the same refusal.
+		if perr := e.applier(c.goos).Preflight(); perr == nil || !strings.Contains(perr.Error(), c.want) {
+			t.Errorf("%s: preflight got %v, want mention of %q", c.goos, perr, c.want)
+		}
 		if len(e.ran) != 0 || len(e.files) != before {
 			t.Errorf("%s: must not run or write anything on refusal", c.goos)
 		}

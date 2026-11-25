@@ -1,15 +1,22 @@
-# AWS: hub role for a SHARED account (tested against a real account: see prototype/aws-go/iam-test.sh)
+# AWS: the hub's IAM role for a shared account
 
-The account also holds things that are not NiBLR's. The rule: the hub can only create inside NiBLR's own
-network and can only touch instances that carry NiBLR's tags. A popped hub must not be able to read, stop or
-delete anyone else's resources.
+This policy was tested against a real account with `prototype/aws-go/iam-test.sh`.
 
-## Preconditions (created by `niblr init`, using the admin's own credentials, not the hub's)
+The account may also hold resources that are not NiBLR's. The rule is that the hub can create only inside NiBLR's own
+network and can touch only instances that carry NiBLR's tags. A compromised hub must not be able to stop or delete
+anyone else's resources.
 
-* A dedicated VPC (or at least a dedicated subnet + security group) tagged `niblr-managed=true`. Do NOT use the
-  default VPC: resource-level permissions below are scoped to this subnet and SG.
-* A permissions boundary on the hub role so it can never be escalated past this policy.
-* A budget alarm and an instance-count cap enforced by the daemon (`max-exits`), because quotas are shared.
+## Preconditions
+
+`niblr init` creates the network using the admin's own credentials, not the hub's. It creates a dedicated VPC, subnet,
+internet gateway, and two security groups, all tagged `niblr-managed=true` and `niblr-env=<env>`. Do not use the default
+VPC, because the resource-level permissions below are scoped to this subnet and these security groups.
+
+`niblr init` does not create the following. Set them up by hand.
+
+* The hub's IAM role and instance profile, with the policy below. `prototype/aws-go/rig-up.sh` shows the commands.
+* A permissions boundary on the hub role, so it can never be escalated past this policy. This is recommended.
+* A budget alarm. The number of exits is capped only by the `--want` flag, and quotas are shared.
 
 ## Policy
 
@@ -44,15 +51,15 @@ delete anyone else's resources.
       ]
     }
 
-Deliberately absent: `iam:PassRole` (exits get no instance profile), `ec2:CreateTags` outside creation (a popped hub
+Deliberately absent: `iam:PassRole` (exits get no instance profile), `ec2:CreateTags` outside creation (a compromised hub
 could otherwise tag someone else's instance `niblr-managed=true` and then terminate it), and any wildcard action.
 
 ## Known residual risks (shared account)
 
-* `Describe*` has no resource-level permissions, so a popped hub can enumerate every instance in the region.
-  Acceptable only if instance names/tags in this account are not sensitive.
-* Shared vCPU quota: NiBLR can starve other teams. Cap `max-exits`, alarm on spend, and request a quota
-  separation if this ever gets large.
+* `Describe*` has no resource-level permissions, so a compromised hub can enumerate every instance in the region.
+  Acceptable only if instance names and tags in the account are not sensitive.
+* Shared vCPU quota: NiBLR can starve other teams. Keep `--want` small, alarm on spend, and request a separate quota if
+  usage grows.
 * The `niblr-managed` tag is the trust boundary. Anyone else with `ec2:CreateTags` in the account can make
-  their own instances look like NiBLR's. Add a tag-policy / SCP denying `niblr-*` tag writes to everyone but
-  the NiBLR admin role and the hub (needs an org admin).
+  their own instances look like NiBLR's. Add a tag policy or service control policy (SCP) denying `niblr-*` tag writes to everyone but
+  the NiBLR admin role and the hub (this requires an AWS Organizations administrator).

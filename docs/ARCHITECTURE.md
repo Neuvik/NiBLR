@@ -1,68 +1,86 @@
 # How NiBLR works
 
-A short, current explanation. [DESIGN.md](DESIGN.md) holds the reasoning, review notes and roadmap.
+This page explains how NiBLR works today. [DESIGN.md](DESIGN.md) records the reasoning and the roadmap.
 
 ## The picture
 
-    operator ──WireGuard──▶ hub ──one WireGuard tunnel per exit──▶ exit VM ──▶ internet
-                              ▲                                      │
-                              └──────── exits dial the hub ──────────┘
+    tester ──WireGuard──▶ hub ──one WireGuard tunnel per exit──▶ exit VM ──▶ internet
+                            ▲                                       │
+                            └───────── exits connect to the hub ────┘
 
-* **Operators** are WireGuard peers on `10.10.9.0/24`. They send all traffic to the hub.
-* **Exits** are tiny cloud VMs. Each one dials *back* to the hub, so exits need no inbound ports. Each exit NATs
-  what it receives out of its own public address.
-* **The hub** owns one WireGuard interface per exit (`wg-eN`), plus one for operators (`wg-op`).
+* A tester is a WireGuard peer (a client) on the network `10.10.9.0/24`. All of the tester's traffic goes to the hub.
+* An exit is a small cloud VM. Each exit connects to the hub, so it needs no inbound ports. It applies network address
+  translation (NAT), so outbound traffic leaves from the exit's own public address.
+* The hub has one WireGuard interface per exit (`wg-eN`) and one for testers (`wg-op`).
 
-## Choosing an exit (the rotation)
+## Choosing an exit
 
-On the hub, nftables gives every **new** operator connection a mark (the exit number), chosen at random from the
-healthy exits. The mark is saved with the connection (conntrack) and re-applied to its later packets, so a connection
-never changes exit mid-stream. `ip rule fwmark N` sends marked traffic to routing table `1000+N`, whose default route
-is that exit's tunnel. Replies come back the same way, so it is symmetric by construction.
+On the hub, nftables gives every new tester connection a firewall mark (fwmark) that is the exit number, chosen at
+random from the healthy exits. The mark is saved with the connection (in conntrack, the kernel's connection table) and
+applied again to the connection's later packets, so a connection never changes exit midway. An `ip rule` matching
+`fwmark N` sends marked traffic to routing table `1000+N`, where N is the exit number, and that table's default route
+is the exit's tunnel. Replies return through the same tunnel, so each connection uses one exit in both directions.
 
-**Failing closed:** a fallback routing rule for operator traffic ends in an unreachable route, and when no exit is
-healthy new connections are dropped. Nothing falls back to the hub's own address.
+### Failing closed
+
+A fallback routing rule for tester traffic ends in an unreachable route. When no exit is healthy, new connections are
+dropped, and no traffic leaves from the hub's own address.
 
 ## Health
 
-An exit is in the pool only if it has a recent WireGuard handshake (under about 200 s) **and** a marked ping to
-`1.1.1.1` through it succeeds end to end. A drained exit leaves the pool while its tunnel stays up.
-Pool changes are applied atomically in one `nft -f`.
+An exit stays in the pool only while both conditions hold. Its last WireGuard handshake is under 200 seconds old, and a
+ping to `1.1.1.1` sent through it succeeds. A drained exit leaves the pool while its tunnel stays up. The hub applies
+pool changes atomically with a single `nft -f` call.
 
-## The reconcile loop (no state file)
+## The reconcile loop
 
-`niblrd` repeats every few seconds:
+The hub keeps no state file for exits. It reads their state from cloud tags. The daemon runs this loop every 15 seconds
+by default (`--reconcile`).
 
-1. **List** exits in the cloud by tag (`niblr-managed`, `niblr-env`, `niblr-slot`, plus the exit's public key).
-2. **Plan** against `--want`: create missing slots, delete strays, duplicates, stopped (broken) instances.
-3. **Apply** through the provider (AWS today). Creates carry an idempotency token and tags set at creation time.
-4. **Sync the hub** with what exists: build interfaces for new exits, remove interfaces for gone ones.
+1. List the exits in the cloud by tag (`niblr-managed`, `niblr-env`, `niblr-slot`, and the exit's public key). A slot is
+   a numbered position in the pool.
+2. Plan the changes against `--want`. Create missing slots, and delete strays (instances with an unusable slot),
+   duplicates, and stopped instances, which NiBLR treats as broken.
+3. Apply the plan through the provider (AWS today). Each create call carries an idempotency token, so a retried create
+   cannot launch a duplicate, and sets its tags at creation time.
+4. Sync the hub with what exists. Build interfaces for new exits and remove interfaces for exits that are gone.
 
-**Ordering rule:** a slot is taken out of the routing pool *before* its interface is torn down, then its conntrack
-entries are purged.
+The hub removes a slot from the routing pool before tearing down its interface, then purges that slot's conntrack
+entries.
 
-**Rotation = delete the instance.** The loop refills the slot with a new instance (new address, new key).
-Losing the hub loses nothing about exits: a new hub rebuilds from the tags.
+To rotate an exit, delete its instance. The loop refills the slot with a new instance that has a new address and key.
+If the hub is lost, a new hub rebuilds the exit list from the cloud tags. Two things do not survive a lost hub. Each
+exit has the hub's public IP built in, so the new hub needs the same address. The hub also keeps the list of enrolled
+testers on its own disk, so testers need new invites.
 
 ## Joining
 
-`niblrd invite` mints a one-time token. `niblr join` generates the operator's key **locally**, then sends only the
-public key and token to the hub over TLS pinned to the certificate fingerprint carried in the invite. The hub adds
-the peer and returns the tunnel settings. Client config sends `0.0.0.0/0` and `::/0` into the tunnel, forces DNS
-through it, and on Linux blocks non-tunnel output with a firewall rule.
+`niblr join` generates the tester's key locally and sends only the public key and the invite token to the hub. The
+connection uses TLS pinned to the certificate fingerprint embedded in the invite. The hub adds the peer and returns the
+tunnel settings.
+
+The client configuration routes all IPv4 and IPv6 traffic (`0.0.0.0/0` and `::/0`) into the tunnel and forces DNS through
+it. The hub has no IPv6 route, so IPv6 traffic ends there. On Linux, a firewall rule also blocks any traffic outside the
+tunnel.
 
 ## Code map
 
-    cmd/niblr          operator + admin CLI
-    cmd/niblrd         hub daemon (static mode, managed mode, invite)
-    internal/provider  cloud contract (Provider: CreateExit, DeleteExit, ListExits), aws/ and fake/
-    internal/reconcile plan + apply, level-triggered
-    internal/hub       Manager (sync hub to exits), Base (one-time hub setup)
-    internal/boot      exit cloud-init and the exact hub commands
-    internal/pool, dataplane, health   routing marks, nftables ruleset, health checks
-    internal/enroll    invites, enrollment server and client
-    internal/client    renders and applies the operator's tunnel config (Linux, Windows)
+    cmd/niblr           the tester and admin command-line tool
+    cmd/niblrd          the hub daemon (static mode, managed mode, and the invite subcommand)
+    internal/provider   the cloud interface (CreateExit, DeleteExit, ListExits), with aws/ and fake/
+    internal/reconcile  planning and applying changes, level-triggered
+    internal/hub        the Manager (syncs the hub to the exits) and Base (one-time hub setup)
+    internal/boot       exit cloud-init and the exact hub commands
+    internal/pool       the exit pool and its health state
+    internal/dataplane  the nftables ruleset
+    internal/health     health checks
+    internal/enroll     invites, and the enrollment server and client
+    internal/client     renders and applies the tester's tunnel configuration (Linux and Windows)
 
-## What is *not* here yet
+In static mode, `niblrd` is given a fixed list of exits with `--exits`. In managed mode, it creates and replaces exits
+itself.
 
-Other clouds, SOCKS5/HTTPS workers, IPv6 exits and operator revocation. See the README roadmap.
+## Not yet implemented
+
+NiBLR does not yet support other clouds, SOCKS5 or HTTPS workers, IPv6 exits, or revoking a tester. See the roadmap in
+the README.

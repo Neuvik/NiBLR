@@ -1,13 +1,16 @@
 # Acceptable use
 
-NiBLR sends traffic from many addresses so that authorized testers can simulate multiple users. Used without
-permission, the same capability is an attack tool, so:
+NiBLR sends traffic from many addresses so that authorized testers can simulate multiple users. Without permission, it
+is an attack tool. Follow these rules.
 
-* **Only use it on systems you own or have written authorization to test**, within the scope and rules of that engagement.
-* **Check your rules of engagement** about source addresses. Some clients want to know, or allowlist, the exit addresses.
-* **Don't use it to evade a block you were told to respect**, to harass people, or against systems outside scope.
-* **You are responsible for the cloud accounts it runs in.** Cloud providers' terms apply to the exits' traffic, and
-  abuse complaints land on the account owner. Know your provider's penetration-testing policy.
-* **Don't expose NiBLR to the public internet as a proxy.** It isn't designed as one and doesn't try to be.
+* Use NiBLR only on systems you own or have written authorization to test, and stay within the scope and rules of the
+  engagement.
+* Read your rules of engagement for anything about source addresses. Some clients want the exit addresses so they can
+  add them to an allow list.
+* Do not use NiBLR to get around a block you were told to respect, to harass anyone, or against systems outside your
+  scope.
+* You are responsible for the cloud accounts NiBLR runs in. The provider's terms apply to the exits' traffic, and abuse
+  complaints go to the account owner. Read your provider's penetration-testing policy before you launch exits.
+* Do not offer NiBLR to others as a public proxy. It is not built for that.
 
-The software is provided under the MIT license (see `LICENSE.txt`) without warranty.
+NiBLR is released under the MIT license, without warranty. See `LICENSE.txt`.

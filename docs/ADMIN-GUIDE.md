@@ -1,59 +1,77 @@
 # NiBLR admin guide (AWS)
 
-How to stand up a NiBLR environment and keep it healthy.
+This guide covers how to set up a NiBLR environment and keep it healthy. A tester is the person who routes traffic
+through NiBLR, and the tester guide covers their side.
 
-> **Honest status:** every step here is proven on a real AWS account, but the hub is still set up by hand. There is no
-> installer or machine image yet. The automated version of these steps is `prototype/aws-go/rig-up.sh`; read it next to
-> this guide. Packaging the hub is the next documentation-relevant piece of work.
+> **Status:** every step below has been run on a real AWS account, but the hub is still set up by hand. There is no
+> installer or machine image. `prototype/aws-go/rig-up.sh` automates most of these steps, so read it alongside this
+> guide.
 
-## 0. Decide where it lives
+## 1. Plan
 
-* **Use a dedicated AWS account if you can.** If the account is shared with other things, NiBLR is built to cope (its
-  role can only touch its own tagged resources) but quotas are shared. Read [IAM-aws.md](IAM-aws.md) first.
-* **Pick a region.** All examples use `us-west-1`; pick the one close to your testers or your target.
-* **Pick an environment name** (e.g. `myteam`). Everything NiBLR creates is tagged with it, and a hub only sees its own.
-* **Check your engagement rules** ([ACCEPTABLE-USE.md](ACCEPTABLE-USE.md)) and your cloud provider's testing policy.
+* A dedicated AWS account is best. If the account is shared, the hub role can touch only resources tagged for its
+  environment, but service quotas are still shared. Read [IAM-aws.md](IAM-aws.md) first.
+* Choose a region close to your testers or your target. The examples use `us-west-1`.
+* Choose an environment name, for example `myteam`. Every resource NiBLR creates carries it as a tag, and a hub manages
+  only resources with its own environment tag.
+* Check your rules of engagement ([ACCEPTABLE-USE.md](ACCEPTABLE-USE.md)) and your cloud provider's testing policy.
 
-You need: the `aws` CLI configured with **admin** credentials (only for setup), Go 1.26+ to build, and an SSH key
-or SSM access to reach the hub.
+You need the `aws` CLI configured with administrator credentials (needed only for setup), Go 1.26 or newer to build,
+and either an SSH key or AWS Systems Manager Session Manager access to reach the hub.
 
-## 1. Build
+## 2. Build
 
     go build -o bin/ ./cmd/...
     GOOS=linux GOARCH=amd64 go build -o bin/niblrd-linux ./cmd/niblrd
+    GOOS=windows GOARCH=amd64 go build -o bin/niblr.exe ./cmd/niblr
 
-## 2. Create the network
+The last command makes the Windows program for your testers. Linux testers use `bin/niblr`.
+
+## 3. Create the network
 
     bin/niblr init --env myteam --region us-west-1
 
-This creates a dedicated VPC, subnet, internet gateway and two security groups, all tagged `niblr-managed=true` and
-`niblr-env=myteam`. It is safe to re-run. It prints the ids you need below (`subnet`, `exit-sg`, `hub-sg`).
-The hub security group opens **UDP 51000-51999** (WireGuard) and **TCP 8443** (enrollment). Exits get no inbound access.
+This creates a dedicated VPC, subnet, internet gateway, and two security groups, all tagged `niblr-managed=true` and
+`niblr-env=myteam`. The command is safe to re-run and prints the IDs used below: `subnet`, `exit-sg`, and `hub-sg`.
 
-## 3. Create the hub's IAM role
+The hub security group allows inbound `UDP 51000-51999` (the WireGuard tunnels from exits and testers) and `TCP 8443`
+(enrollment). The exit security group allows no inbound traffic.
 
-The hub needs a role with the policy in [IAM-aws.md](IAM-aws.md), with `REGION`, `ACCOUNT`, `SUBNET_ID`, `SG_ID`
-(the **exit** SG) and `ENV` filled in. The template is `prototype/aws-go/hub-policy.json.tmpl`. Create the role, put the
-policy on it, and create an instance profile of the same name. Without this the hub cannot create exits.
+`niblr init` creates only the network. It does not create the hub's IAM role, a permissions boundary, or a budget
+alarm.
 
-## 4. Launch the hub
+## 4. Create the hub's IAM role
 
-* Ubuntu 24.04, `t3.micro` or `t3.nano` is enough.
-* In the **hub** security group, with the hub instance profile.
-* `HttpTokens=required` (IMDSv2) and a public IP.
-* Optional: add your own SSH-only security group restricted to your address. Never open SSH to the world.
+The hub needs a role with the policy in [IAM-aws.md](IAM-aws.md), with `REGION`, `ACCOUNT`, `SUBNET_ID`, `SG_ID` (the
+exit security group), and `ENV` filled in. The template is `prototype/aws-go/hub-policy.json.tmpl`. Create the role, put
+the policy on it, and create an instance profile with the same name. `rig-up.sh` shows the exact `aws iam` commands.
+Without this role, the hub cannot create exits.
+
+## 5. Launch the hub
+
+* Use Ubuntu 24.04 and a `t3.nano` or `t3.micro`. Only a `t3.nano` has been tested, in short runs. Its network credits
+  run out under sustained load, so use a larger or non-burstable size for real engagements.
+* Put it in the hub security group and attach the hub instance profile.
+* Set `HttpTokens=required` to enforce Instance Metadata Service version 2 (IMDSv2).
+* Give it an Elastic IP, a fixed public address. Every exit has the hub's address built in, so a hub that gets a new
+  address strands its existing exits.
+* Add your own security group that allows SSH only from your address, never from `0.0.0.0/0`.
+* Tag the hub yourself (`niblr-managed=true` and your environment). NiBLR tags the exits and the network but not the
+  hub.
 
 On the hub:
 
-    sudo apt-get update && sudo apt-get install -y wireguard nftables conntrack
-    # hub key: generate on your workstation with `niblr dev genkey` (prints private and public key)
+    sudo apt-get update && sudo apt-get install -y wireguard nftables conntrack iptables
     sudo mkdir -p /etc/niblr
-    echo "<PRIVATE KEY>" | sudo tee /etc/niblr/hub.key >/dev/null && sudo chmod 600 /etc/niblr/hub.key
     sudo install -m755 niblrd-linux /usr/local/bin/niblrd
 
-## 5. Run the daemon
+Generate the hub key on your workstation with `niblr dev genkey`. It prints a private and a public key. Copy the
+private key to `/etc/niblr/hub.key` on the hub (mode 600) by copying a file, for example with `scp`, and do not type it
+into a shell where it ends up in the history. You will need the same key if you ever rebuild the hub.
 
-`/etc/systemd/system/niblrd.service`:
+## 6. Run the daemon
+
+Create `/etc/systemd/system/niblrd.service`:
 
     [Unit]
     Description=NiBLR hub daemon
@@ -62,47 +80,63 @@ On the hub:
     [Service]
     Environment=AWS_REGION=us-west-1
     ExecStart=/usr/local/bin/niblrd --want 3 --env myteam --region us-west-1 \
-        --ami <ubuntu-24.04-ami> --subnet <subnet> --exit-sg <exit-sg> --hub-ip <hub public ip> \
+        --ami <ubuntu-24.04-ami> --subnet <subnet> --exit-sg <exit-sg> --hub-ip <hub-elastic-ip> \
         --lease-minutes 240
     Restart=always
     [Install]
     WantedBy=multi-user.target
 
-    sudo systemctl daemon-reload && sudo systemctl enable --now niblrd
-    journalctl -u niblrd -f
+Then start it and watch the log:
 
-Within about a minute the log should show three healthy exits. Key flags (`niblrd --help` lists all):
+    sudo systemctl daemon-reload && sudo systemctl enable --now niblrd
+    sudo journalctl -u niblrd -f
+
+After about a minute, the log shows three healthy exits. The main flags are below, and `niblrd --help` lists all of
+them.
 
 | Flag | Meaning |
 |---|---|
-| `--want N` | how many exits to keep. The daemon creates, replaces and removes to match |
-| `--lease-minutes M` | each exit shuts itself down and terminates after M minutes (a safety net against forgotten exits; the daemon refills the slot). `0` = never |
-| `--size` | exit instance type (default `t3.nano`; the policy allows only small types) |
-| `--drain ids` | take exits out of rotation without destroying them |
+| `--want N` | How many exits to keep. The daemon creates, replaces, and removes exits to match. |
+| `--lease-minutes M` | Each exit shuts itself down and terminates after M minutes, and the daemon refills the slot. This limits the cost of forgotten exits. The default, `0`, disables the lease. |
+| `--size` | The exit instance type. The default is `t3.nano`, and the policy allows only small types. |
+| `--drain <ids>` | A comma-separated list of exit IDs to take out of rotation without destroying them. |
 
-## 6. Invite operators
+## 7. Invite testers
 
 On the hub:
 
-    sudo niblrd invite --name alice --ttl 24h --hub-ip <hub public ip>
+    sudo niblrd invite --name alice --ttl 24h --hub-ip <hub-elastic-ip>
 
-Give the printed `niblr1:...` string to the operator over a private channel. It works once and expires. The operator
-then follows the [operator guide](OPERATOR-GUIDE.md).
+Send the printed `niblr1:...` invite to the tester over a private channel. The invite can be used once and expires after
+the `--ttl` (24 hours by default). The tester then follows the [tester guide](OPERATOR-GUIDE.md).
 
-## Day-to-day
+## Day to day
 
-* **Burned address / rotate one:** delete that exit instance in the console or CLI. The daemon notices, builds a
-  replacement with a fresh address and removes the old tunnel. Established connections on it end; others are unaffected.
-* **More or fewer exits:** change `--want` and restart `niblrd`.
-* **Hub died:** launch a new hub the same way with the **same hub key**. It finds its exits again from cloud tags.
-  Operators' enrollments are not recovered: re-invite them.
-* **See what exists:** `niblr dev exit-list --env myteam` (lists the instances tagged for that environment; `dev` commands are developer helpers).
+To rotate a burned address (one that a client has blocked), delete that exit's instance in the console or CLI. The
+daemon builds a replacement with a new address and removes the old tunnel. Connections through the deleted exit end, and
+others are unaffected.
+
+To change the number of exits, change `--want` and restart `niblrd`.
+
+If the hub is lost, launch a new one the same way, with the same hub key and the same Elastic IP. It finds its exits
+again from their cloud tags. It does not remember testers, so send each one a new invite. If the new hub has a
+different address, the old exits cannot reach it. Delete them and let the new hub build fresh ones.
+
+To list the exits for an environment, run `niblr dev exit-list --env myteam --region us-west-1`. The `dev` commands are
+developer helpers. This one needs administrator credentials and creates the NiBLR network in that region if it is
+missing.
 
 ## Teardown
 
-See [COST-AND-CLEANUP.md](COST-AND-CLEANUP.md). **Terminate the hub first**, otherwise it recreates exits as you delete them.
+See [COST-AND-CLEANUP.md](COST-AND-CLEANUP.md). Terminate the hub first. Otherwise it recreates exits as you delete
+them.
 
 ## Known gaps
 
-No revoke-operator command; invites can only be minted on the hub; Windows client untested on real Windows; IPv6
-behaviour unmeasured; only AWS is implemented. See README "What has been proven".
+* No command to revoke a tester
+* Invites can be created only on the hub
+* The Windows client has not been tested on a real Windows machine
+* IPv6 behavior has not been measured
+* Only AWS is implemented
+
+The README section on what has and has not been tested has the full list.

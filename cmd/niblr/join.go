@@ -52,8 +52,8 @@ func join(args []string) {
 		fail("%v", err)
 	}
 	a := applier()
-	if a.Joined() {
-		fail("You're already joined. To use a new invite, run \"niblr leave\" first.")
+	if err := a.Preflight(); err != nil { // before enrolling: an invite can only be used once
+		fail("%v", err)
 	}
 	priv, pub, err := boot.GenKey() // the private key is made here and never leaves this machine
 	if err != nil {
