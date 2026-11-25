@@ -1,4 +1,4 @@
-# AWS: hub role for a SHARED account (sketch, not yet tested against a real account)
+# AWS: hub role for a SHARED account (tested against a real account: see prototype/aws-go/iam-test.sh)
 
 The account also holds things that are not NiBLR's. The rule: the hub can only create inside NiBLR's own
 network and can only touch instances that carry NiBLR's tags. A popped hub must not be able to read, stop or
@@ -31,6 +31,7 @@ delete anyone else's resources.
           "Condition": {
             "StringEquals": {
               "aws:RequestTag/niblr-managed": "true",
+              "aws:RequestTag/niblr-env": "ENV",
               "ec2:MetadataHttpTokens": "required" },
             "StringLike": { "ec2:InstanceType": ["t3.nano", "t3.micro", "t4g.nano", "t4g.micro"] } } },
         { "Sid": "TagOnlyAtCreate", "Effect": "Allow", "Action": "ec2:CreateTags",
@@ -39,7 +40,7 @@ delete anyone else's resources.
         { "Sid": "OnlyTouchOwnInstances", "Effect": "Allow",
           "Action": ["ec2:TerminateInstances", "ec2:StopInstances"],
           "Resource": "arn:aws:ec2:REGION:ACCOUNT:instance/*",
-          "Condition": { "StringEquals": { "ec2:ResourceTag/niblr-managed": "true" } } }
+          "Condition": { "StringEquals": { "ec2:ResourceTag/niblr-managed": "true", "ec2:ResourceTag/niblr-env": "ENV" } } }
       ]
     }
 

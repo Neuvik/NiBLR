@@ -1,0 +1,76 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOnlyDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeTags",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeImages"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LaunchOnlyIntoNiblrNetwork",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:REGION:ACCOUNT:subnet/SUBNET_ID",
+        "arn:aws:ec2:REGION:ACCOUNT:security-group/SG_ID",
+        "arn:aws:ec2:REGION::image/*",
+        "arn:aws:ec2:REGION:ACCOUNT:network-interface/*",
+        "arn:aws:ec2:REGION:ACCOUNT:volume/*"
+      ]
+    },
+    {
+      "Sid": "InstancesMustBeTaggedAndSmall",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:REGION:ACCOUNT:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/niblr-managed": "true",
+          "aws:RequestTag/niblr-env": "ENV",
+          "ec2:MetadataHttpTokens": "required"
+        },
+        "StringLike": {
+          "ec2:InstanceType": [
+            "t3.nano",
+            "t3.micro",
+            "t4g.nano",
+            "t4g.micro"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TagOnlyAtCreate",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:REGION:ACCOUNT:*/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": "RunInstances"
+        }
+      }
+    },
+    {
+      "Sid": "OnlyTouchOwnInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:REGION:ACCOUNT:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/niblr-managed": "true",
+          "ec2:ResourceTag/niblr-env": "ENV"
+        }
+      }
+    }
+  ]
+}
