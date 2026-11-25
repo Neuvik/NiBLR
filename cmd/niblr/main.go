@@ -12,14 +12,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 
 	nibaws "niblr/internal/provider/aws"
+	"niblr/internal/version"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "NiBLR\n\n  niblr join <invite>   connect (all your traffic goes through NiBLR)\n  niblr status          check the connection\n  niblr leave           disconnect\n\nFor admins:  niblr init [--env NAME] [--region R] [--az AZ]")
+		fmt.Fprintln(os.Stderr, "NiBLR\n\n  niblr join <invite>   connect (all your traffic goes through NiBLR)\n  niblr status          check the connection\n  niblr leave           disconnect\n  niblr version         show the version\n\nFor admins:  niblr init [--env NAME] [--region R] [--az AZ]")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "version", "--version":
+		fmt.Println(version.String("niblr"))
 	case "join":
 		join(os.Args[2:])
 	case "leave":

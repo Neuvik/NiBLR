@@ -1,0 +1,43 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - name: Test
+        run: |
+          go vet ./...
+          go test ./...
+      - name: Build
+        run: |
+          set -euo pipefail
+          V=${GITHUB_REF_NAME}
+          C=$(git rev-parse --short HEAD)
+          D=$(date -u +%Y-%m-%d)
+          LD="-s -w -X niblr/internal/version.Version=$V -X niblr/internal/version.Commit=$C -X niblr/internal/version.Date=$D"
+          mkdir -p dist
+          build() { # os arch binary outname
+            GOOS=$1 GOARCH=$2 CGO_ENABLED=0 go build -trimpath -ldflags "$LD" -o "dist/$4" "./cmd/$3"
+          }
+          build linux   amd64 niblr  niblr-$V-linux-amd64
+          build linux   arm64 niblr  niblr-$V-linux-arm64
+          build windows amd64 niblr  niblr-$V-windows-amd64.exe
+          build linux   amd64 niblrd niblrd-$V-linux-amd64
+          build linux   arm64 niblrd niblrd-$V-linux-arm64
+          (cd dist && sha256sum * > SHA256SUMS)
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          scripts/release-notes.sh "$GITHUB_REF_NAME" > notes.md
+          test -s notes.md || { echo "CHANGELOG.md has no section for $GITHUB_REF_NAME"; exit 1; }
+          PRE=""; case "$GITHUB_REF_NAME" in v0.*|*-*) PRE="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --title "NiBLR $GITHUB_REF_NAME" --notes-file notes.md $PRE

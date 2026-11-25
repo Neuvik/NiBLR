@@ -1,6 +1,0 @@
----
-- name: run ip_rule
-  shell: /root/ip_rule.sh
-
-- name: run bring-up-nodes
-  shell: /root/bring-up-nodes.sh

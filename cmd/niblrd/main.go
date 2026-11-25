@@ -33,9 +33,14 @@ import (
 	"niblr/internal/pool"
 	nibaws "niblr/internal/provider/aws"
 	"niblr/internal/reconcile"
+	"niblr/internal/version"
 )
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
+		fmt.Println(version.String("niblrd"))
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "invite" {
 		inviteCmd(os.Args[2:])
 		return

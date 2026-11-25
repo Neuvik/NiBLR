@@ -62,6 +62,6 @@ EOT
 # client: real operator machine. Only needs wireguard + iptables; joins with `niblr join`.
 $SSH ubuntu@$CL 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iptables dnsutils tcpdump >/dev/null 2>&1; true'
 $SCP /tmp/niblr-bin ubuntu@$CL:/tmp/niblr; $SSH ubuntu@$CL 'sudo install -m755 /tmp/niblr /usr/local/bin/niblr'
-$SCP $DIR/../dataplane/target.py ubuntu@$TG:/tmp/target.py
+$SCP $DIR/target.py ubuntu@$TG:/tmp/target.py
 $SSH ubuntu@$TG 'sudo systemd-run --unit niblr-target python3 /tmp/target.py >/dev/null 2>&1; head -c 30000000 /dev/urandom > /tmp/big.bin; sha256sum /tmp/big.bin | cut -c1-16 > /tmp/big.sum; sudo systemd-run --unit niblr-big --working-directory=/tmp python3 -m http.server 8081 >/dev/null 2>&1; echo target ready'
 echo RIG UP

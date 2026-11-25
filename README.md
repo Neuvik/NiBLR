@@ -11,7 +11,7 @@
 
 *Named after Nibbler from Futurama.*
 
-`Go 1.26` · `WireGuard` · `Linux and Windows testers` · `AWS only for now`
+`v0.1.0` · `Go 1.26` · `WireGuard` · `Linux and Windows testers` · `AWS only for now`
 
 </div>
 
@@ -158,6 +158,7 @@ These are ideas, roughly in priority order. None are built.
 | [IAM policy](docs/IAM-aws.md) | review the hub's AWS permissions |
 | [Design notes](docs/DESIGN.md) | see why it is built this way and where it is going |
 | [Contributing](CONTRIBUTING.md) | change the code |
+| [Releasing](docs/RELEASING.md) and [Changelog](CHANGELOG.md) | see what changed and how releases are made |
 
 ## Repository map
 
@@ -168,9 +169,6 @@ internal/         cloud provider interface, AWS provider, reconciler, hub routin
 prototype/        scripts that exercise the system on real AWS
 docs/             guides, architecture, design notes, and the IAM policy
 ```
-
-The old Python, Terraform, and Ansible version (`main.py`, `terraform/`, `ansible/`, `setup.sh`, and others) is still in
-the tree and will be removed once the new version is proven. Do not use it.
 
 ---
 
