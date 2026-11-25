@@ -43,6 +43,8 @@ const (
 	WGPortFrom   = 51000
 	WGPortTo     = 51999
 	ExitPortBase = 51100
+	// Operators enroll over TLS here, guarded by a one-time invite token.
+	EnrollPort = 8443
 )
 
 func tagSpec(rt types.ResourceType, env, name string) []types.TagSpecification {
@@ -179,6 +181,13 @@ func ensureSG(ctx context.Context, api NetAPI, env, vpc, name, desc string, wire
 		}}})
 		if err != nil && !isCode(err, "InvalidPermission.Duplicate") {
 			return "", fmt.Errorf("open wireguard ports on %s: %w", name, err)
+		}
+		_, err = api.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{GroupId: &id, IpPermissions: []types.IpPermission{{
+			IpProtocol: strp("tcp"), FromPort: int32p(EnrollPort), ToPort: int32p(EnrollPort),
+			IpRanges: []types.IpRange{{CidrIp: strp("0.0.0.0/0"), Description: strp("operator enrollment (invite token required)")}},
+		}}})
+		if err != nil && !isCode(err, "InvalidPermission.Duplicate") {
+			return "", fmt.Errorf("open enrollment port on %s: %w", name, err)
 		}
 		// Close the single-port rule an earlier version created.
 		_, err = api.RevokeSecurityGroupIngress(ctx, &ec2.RevokeSecurityGroupIngressInput{GroupId: &id, IpPermissions: []types.IpPermission{{

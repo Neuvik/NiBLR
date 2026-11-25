@@ -8,10 +8,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -25,6 +27,7 @@ import (
 
 	"niblr/internal/boot"
 	"niblr/internal/dataplane"
+	"niblr/internal/enroll"
 	"niblr/internal/health"
 	"niblr/internal/hub"
 	"niblr/internal/pool"
@@ -33,6 +36,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "invite" {
+		inviteCmd(os.Args[2:])
+		return
+	}
 	var (
 		opIface  = flag.String("operator-iface", "wg-op", "WireGuard interface operators connect to")
 		exitsArg = flag.String("exits", "1,2", "comma-separated exit ids; exit N uses interface wg-eN")
@@ -56,6 +63,8 @@ func main() {
 		keyFile   = flag.String("key-file", "/etc/niblr/hub.key", "hub WireGuard private key file")
 		lease     = flag.Int("lease-minutes", 0, "exits shut themselves down after this long (0 = never)")
 		reconcile = flag.Duration("reconcile", 15*time.Second, "how often to reconcile exits with the cloud")
+		stateDir  = flag.String("state-dir", "/var/lib/niblr", "where enrollment state and the enrollment certificate live")
+		enrollOn  = flag.String("enroll-listen", ":8443", "address for the operator enrollment API (managed mode)")
 	)
 	flag.Parse()
 
@@ -77,6 +86,16 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if mgr != nil && !*dry {
+		base := hub.Base{R: execRunner{}, KeyFile: *keyFile, OpIface: *opIface, OpPort: 51000, ConnMax: 262144}
+		if err := base.EnsureBase(ctx); err != nil {
+			log.Fatalf("niblrd: hub setup failed: %v", err)
+		}
+		if err := startEnrollment(ctx, base, *stateDir, *enrollOn, *hubIP, *keyFile); err != nil {
+			log.Fatalf("niblrd: enrollment: %v", err)
+		}
+	}
 
 	prober := health.NewProber(*src, *target)
 	var last []int
@@ -242,4 +261,90 @@ func fmtIDs(ids []int) string {
 		s[i] = strconv.Itoa(id)
 	}
 	return strings.Join(s, " ")
+}
+
+func enrollConfig(hubIP, keyFile string) (enroll.Config, error) {
+	raw, err := os.ReadFile(keyFile)
+	if err != nil {
+		return enroll.Config{}, fmt.Errorf("read hub key %s: %w", keyFile, err)
+	}
+	pub, err := boot.PublicKey(string(raw))
+	if err != nil {
+		return enroll.Config{}, err
+	}
+	return enroll.Config{HubKey: pub, WG: fmt.Sprintf("%s:51000", hubIP), DNS: []string{"1.1.1.1", "9.9.9.9"}, MTU: 1420, Prefix: "10.10.9"}, nil
+}
+
+// startEnrollment restores known operators onto the interface and serves the enrollment API.
+func startEnrollment(ctx context.Context, base hub.Base, dir, listen, hubIP, keyFile string) error {
+	cfg, err := enrollConfig(hubIP, keyFile)
+	if err != nil {
+		return err
+	}
+	cert, _, err := enroll.SelfSignedCert(dir)
+	if err != nil {
+		return err
+	}
+	srv, err := enroll.NewServer(dir, cfg, peerFunc(base.AddOperator))
+	if err != nil {
+		return err
+	}
+	if err := srv.Restore(ctx); err != nil {
+		log.Printf("niblrd: restoring operators: %v", err)
+	}
+	hs := &http.Server{Addr: listen, Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second,
+		TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}}
+	ln, err := tls.Listen("tcp", listen, hs.TLSConfig)
+	if err != nil {
+		return err
+	}
+	go func() { <-ctx.Done(); hs.Close() }()
+	go func() {
+		if err := hs.Serve(ln); err != nil && ctx.Err() == nil {
+			log.Printf("niblrd: enrollment server stopped: %v", err)
+		}
+	}()
+	log.Printf("enrollment listening on %s", listen)
+	return nil
+}
+
+type peerFunc func(ctx context.Context, pub, ip string) error
+
+func (f peerFunc) Add(ctx context.Context, pub, ip string) error { return f(ctx, pub, ip) }
+
+// inviteCmd: `niblrd invite --name alice [--ttl 24h]`, run on the hub. Prints the invite to give the operator.
+func inviteCmd(args []string) {
+	fs := flag.NewFlagSet("invite", flag.ExitOnError)
+	name := fs.String("name", "", "who the invite is for")
+	ttl := fs.Duration("ttl", 24*time.Hour, "how long the invite stays valid")
+	dir := fs.String("state-dir", "/var/lib/niblr", "state directory")
+	hubIP := fs.String("hub-ip", "", "this hub's public IP")
+	keyFile := fs.String("key-file", "/etc/niblr/hub.key", "hub WireGuard private key file")
+	port := fs.Int("enroll-port", 8443, "enrollment port")
+	fs.Parse(args)
+	if *name == "" || *hubIP == "" {
+		fmt.Fprintln(os.Stderr, "usage: niblrd invite --name NAME --hub-ip IP [--ttl 24h]")
+		os.Exit(2)
+	}
+	cfg, err := enrollConfig(*hubIP, *keyFile)
+	if err != nil {
+		log.Fatalf("niblrd: %v", err)
+	}
+	_, pin, err := enroll.SelfSignedCert(*dir)
+	if err != nil {
+		log.Fatalf("niblrd: %v", err)
+	}
+	srv, err := enroll.NewServer(*dir, cfg, peerFunc(func(context.Context, string, string) error { return nil }))
+	if err != nil {
+		log.Fatalf("niblrd: %v", err)
+	}
+	tok, exp, err := srv.Mint(*name, *ttl)
+	if err != nil {
+		log.Fatalf("niblrd: %v", err)
+	}
+	s, err := enroll.Invite{Enroll: fmt.Sprintf("%s:%d", *hubIP, *port), WG: cfg.WG, HubKey: cfg.HubKey, Pin: pin, Token: tok, Expires: exp.Unix()}.Encode()
+	if err != nil {
+		log.Fatalf("niblrd: %v", err)
+	}
+	fmt.Printf("Invite for %s (valid until %s, works once):\n\n%s\n\nGive them this, then they run:  niblr join <that line>\n", *name, exp.Format(time.RFC1123), s)
 }

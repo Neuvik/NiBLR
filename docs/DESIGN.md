@@ -115,3 +115,26 @@ Config always routes `0.0.0.0/0, ::/0` and sets `DNS=` to the hub, so nothing le
 
 * Invite token format (one-time WG key + enrollment API), and hub credential story for non-home clouds (static tokens on the hub: scope tightly).
 * Second provider (DigitalOcean planned).
+
+## Operator enrollment (built; unit-tested, not yet run on a real hub)
+
+* **Invite** = one line, `niblr1:<base64url JSON>`: enrollment address, hub WireGuard endpoint, hub WireGuard public
+  key, sha256 pin of the hub's enrollment certificate, a one-time token, an expiry. It is a bearer secret until used.
+  Minted on the hub with `niblrd invite --name alice --hub-ip IP` (a remote `niblr invite` can wrap this later).
+* **`niblr join <invite>`** generates the operator's WireGuard key *on their machine* (the private key never leaves
+  it), then POSTs only the public key and token to `https://hub:8443/v1/enroll` over TLS 1.3 **pinned to the
+  certificate fingerprint in the invite** (no CA, no hostname, nothing to misconfigure). The hub replies with the
+  operator's address (10.10.9.N), the hub key, endpoint, DNS and MTU; the client checks the hub key against the invite.
+* **Hub side:** tokens are stored only as sha256 hashes, are single-use and expire; a lost reply from the same machine
+  is answered identically (idempotent), a different machine presenting a used token is refused; a failed peer-add does
+  not burn the token; failed attempts are rate-limited (10/min globally, so a guesser can briefly lock out real
+  enrollments, which was judged better than allowing guessing). State is `enroll.json` (0600) under a file lock, re-read
+  on every operation so `niblrd invite` and the daemon never overwrite each other. Enrolled operators are re-added to
+  the interface at every daemon start.
+* **Client leak-proofing:** AllowedIPs `0.0.0.0/0, ::/0` (IPv6 goes into the tunnel and dies at the hub, which has no
+  IPv6 route: fail closed), DNS through the tunnel, MTU 1420. Linux: wg-quick plus PostUp/PreDown iptables+ip6tables
+  REJECT of anything not using the tunnel. Windows: relies on WireGuard for Windows's built-in kill switch
+  (active when AllowedIPs covers both families). **None of the leak behaviour has been tested on a real machine yet.**
+* **Known limits:** the hub is cattle, so a rebuilt hub means re-inviting operators (its enrollment state lives on its
+  disk); there is no revoke command yet (an operator can be removed with `wg set wg-op peer <pub> remove` and by editing
+  `enroll.json`); invites cannot be minted from the admin's workstation yet.

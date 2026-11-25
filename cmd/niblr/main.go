@@ -16,10 +16,16 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: niblr init [--env NAME] [--region R] [--az AZ]")
+		fmt.Fprintln(os.Stderr, "NiBLR\n\n  niblr join <invite>   connect (all your traffic goes through NiBLR)\n  niblr status          check the connection\n  niblr leave           disconnect\n\nFor admins:  niblr init [--env NAME] [--region R] [--az AZ]")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "join":
+		join(os.Args[2:])
+	case "leave":
+		leave()
+	case "status":
+		status()
 	case "dev":
 		dev(os.Args[2:])
 	case "init":

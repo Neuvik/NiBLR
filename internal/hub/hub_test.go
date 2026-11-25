@@ -214,3 +214,59 @@ func TestPendingExitWithoutKeyIsNotWired(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+type baseKernel struct {
+	log   []string
+	rules string
+	ifs   string
+}
+
+func (b *baseKernel) Run(_ context.Context, argv ...string) (string, error) {
+	c := strings.Join(argv, " ")
+	b.log = append(b.log, c)
+	switch {
+	case c == "wg show interfaces":
+		return b.ifs, nil
+	case c == "ip rule show":
+		return b.rules, nil
+	case strings.HasPrefix(c, "ip link add wg-op"):
+		b.ifs = "wg-op"
+	case strings.HasPrefix(c, "ip rule add"):
+		b.rules = "200:\tfrom 10.10.9.0/24 lookup 200"
+	}
+	return "", nil
+}
+
+func TestEnsureBaseIsIdempotent(t *testing.T) {
+	k := &baseKernel{}
+	b := Base{R: k, KeyFile: "/k", OpIface: "wg-op", OpPort: 51000}
+	if err := b.EnsureBase(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	adds := func() int {
+		n := 0
+		for _, c := range k.log {
+			if strings.HasPrefix(c, "ip link add") || strings.HasPrefix(c, "ip addr add") || strings.HasPrefix(c, "ip rule add") {
+				n++
+			}
+		}
+		return n
+	}
+	if adds() != 3 {
+		t.Fatalf("first run should add iface, addr and rule: %v", k.log)
+	}
+	if err := b.EnsureBase(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if adds() != 3 {
+		t.Fatalf("second run must add nothing: %v", k.log)
+	}
+}
+
+func TestAddOperatorOnlyTouchesThatPeer(t *testing.T) {
+	k := &baseKernel{}
+	_ = Base{R: k, OpIface: "wg-op"}.AddOperator(context.Background(), "PUB", "10.10.9.5")
+	if len(k.log) != 1 || k.log[0] != "wg set wg-op peer PUB allowed-ips 10.10.9.5/32" {
+		t.Fatalf("%v", k.log)
+	}
+}
