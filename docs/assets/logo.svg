@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 720 200" role="img" aria-label="NiBLR: one tunnel in, many addresses out">
+  <rect width="720" height="200" rx="18" fill="#0f172a"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round">
+    <path d="M40 100 H150"/>
+    <path d="M150 100 C190 100 190 52 232 52 H262"/>
+    <path d="M150 100 H262"/>
+    <path d="M150 100 C190 100 190 148 232 148 H262"/>
+  </g>
+  <g fill="#38bdf8">
+    <circle cx="40" cy="100" r="9"/>
+    <circle cx="272" cy="52" r="9"/>
+    <circle cx="272" cy="100" r="9"/>
+    <circle cx="272" cy="148" r="9"/>
+  </g>
+  <rect x="120" y="76" width="60" height="48" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-width="5"/>
+  <text x="150" y="108" text-anchor="middle" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="22" font-weight="700" fill="#f59e0b">hub</text>
+  <text x="330" y="112" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="78" font-weight="800" letter-spacing="2" fill="#f8fafc">NiBLR</text>
+  <text x="332" y="150" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="22" fill="#94a3b8">Neuvik's IP BLock Rotator</text>
+</svg>

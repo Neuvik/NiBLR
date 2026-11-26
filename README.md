@@ -1,11 +1,6 @@
 <div align="center">
 
-```
-      ,_,
-     (o,o)      N i B L R
-     {`"'}      Neuvik's IP BLock Rotator
-     -"-"-
-```
+<img src="docs/assets/logo.svg" alt="NiBLR: Neuvik's IP BLock Rotator" width="560">
 
 ### One tunnel in, many addresses out
 
@@ -26,7 +21,7 @@ connection that leaves from many public addresses and rotates them as the work g
   you ──WireGuard──▶  hub ──▶ exit 1 ──▶ 203.0.113.10 ─┐
  (all your            │  ├──▶ exit 2 ──▶ 198.51.100.7  ├──▶  the target
   traffic)            │  └──▶ exit 3 ──▶ 192.0.2.44   ─┘
-                      └─ picks an exit for each NEW connection and keeps it until that connection ends
+                      └─ one random exit per NEW connection
 ```
 
 * It works for any IPv4 protocol, outbound only. Web, SSH, scanners, ping, and DNS all work with no per-tool settings.
